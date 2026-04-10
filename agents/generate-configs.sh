@@ -166,6 +166,33 @@ jq -n \
     prompt: $prompt
   }' > "$AGENTS_DIR/debugger.json"
 
+# --- planner ---
+jq -n \
+  --arg prompt "file://${HOME_DIR}/.kiro/agents/planner.md" \
+  --arg skills "skill://${HOME_DIR}/.kiro/skills/**/SKILL.md" \
+  --arg grill "skill://${HOME_DIR}/.kiro/skills/grill-me/SKILL.md" \
+  '{
+    name: "planner",
+    description: "Planner Agent that analyzes context and produces structured execution plans",
+    model: "claude-opus-4.6",
+    tools: ["@builtin"],
+    allowedTools: ["@builtin", "fs_*"],
+    useLegacyMcpJson: false,
+    toolsSettings: {
+      fs_write: {
+        allowedPaths: [".plan/**"],
+        fallbackAction: "deny"
+      }
+    },
+    resources: [
+      "skill://.kiro/skills/*/SKILL.md",
+      $skills,
+      $grill,
+      "file://.kiro/steering/*.md"
+    ],
+    prompt: $prompt
+  }' > "$AGENTS_DIR/planner.json"
+
 # --- code_supervisor ---
 jq -n \
   --arg prompt "file://${HOME_DIR}/.kiro/agents/code_supervisor.md" \
@@ -175,21 +202,40 @@ jq -n \
     name: "code_supervisor",
     prompt: $prompt,
     model: "claude-opus-4.6",
-    description: "Coding Supervisor Agent that plans and delegates tasks to specialized agents",
+    description: "Coding Supervisor Agent that orchestrates and delegates tasks to specialized agents",
     tools: ["*", "@builtin", "use_subagent"],
-    allowedTools: ["@builtin", "fs_*", "execute_bash", "use_subagent"],
+    allowedTools: ["fs_*", "@git", "use_subagent"],
     useLegacyMcpJson: false,
     keyboardShortcut: "ctrl+a",
     toolsSettings: {
+      fs_write: {
+        allowedPaths: [".plan/**"],
+        fallbackAction: "deny"
+      },
+      execute_bash: {
+        allowedCommands: ["mkdir .*"],
+        denyByDefault: true
+      },
       subagent: {
-        availableAgents: ["designer", "developer", "explorer", "reviewer", "simplifier", "tester", "debugger"],
-        trustedAgents: ["designer", "developer", "explorer", "reviewer", "simplifier", "tester", "debugger"]
+        availableAgents: ["planner", "designer", "developer", "explorer", "reviewer", "simplifier", "tester", "debugger"],
+        trustedAgents: ["planner", "designer", "developer", "explorer", "reviewer", "simplifier", "tester", "debugger"]
       }
     },
     resources: [
       "skill://.kiro/skills/*/SKILL.md",
+      "file://.kiro/steering/*.md",
       $skills
     ],
+    mcpServers: {
+      git: {
+        type: "stdio",
+        command: "uvx",
+        args: ["mcp-server-git"],
+        env: {
+          GIT_CONFIG_GLOBAL: "/dev/null"
+        }
+      }
+    },
     hooks: {
       stop: [
         {
@@ -200,7 +246,7 @@ jq -n \
     }
   }' > "$AGENTS_DIR/code_supervisor.json"
 
-echo "Done. Generated 8 agent configs:"
-for f in developer reviewer designer explorer simplifier tester debugger code_supervisor; do
+echo "Done. Generated 9 agent configs:"
+for f in developer reviewer designer explorer simplifier tester debugger planner code_supervisor; do
   echo "  ✓ $AGENTS_DIR/$f.json"
 done

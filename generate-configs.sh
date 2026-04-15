@@ -293,15 +293,14 @@ jq -n \
   --arg prompt "file://${HOME_DIR}/.kiro/agents/code_supervisor.md" \
   --arg skills "skill://${HOME_DIR}/.kiro/skills/**/SKILL.md" \
   --arg notify "${HOME_DIR}/.kiro/hooks/cmux-notify.sh" \
-  --arg council_skill "skill://${HOME_DIR}/.kiro/skills/council-session/SKILL.md" \
   --arg phase_reminder "$KIRO_DIR/hooks/phase-reminder.sh" \
   '{
     name: "code_supervisor",
     prompt: $prompt,
     model: "claude-opus-4.6",
     description: "Coding Supervisor Agent that orchestrates and delegates tasks to specialized agents",
-    tools: ["read", "use_subagent", "todo", "thinking", "introspect", "session"],
-    allowedTools: ["read", "use_subagent", "todo", "thinking", "introspect", "session"],
+    tools: ["read", "use_subagent", "todo", "thinking", "introspect", "session", "@git"],
+    allowedTools: ["read", "use_subagent", "todo", "thinking", "introspect", "session", "@git"],
     useLegacyMcpJson: false,
     keyboardShortcut: "ctrl+a",
     welcomeMessage: "What would you like to build? I'\''ll coordinate the team.",
@@ -317,8 +316,7 @@ jq -n \
     resources: [
       "skill://.kiro/skills/*/SKILL.md",
       "file://.kiro/steering/*.md",
-      $skills,
-      $council_skill
+      $skills
     ],
     mcpServers: {
       git: {
@@ -458,12 +456,12 @@ jq -n \
 inject_caveman_hook "$AGENTS_DIR/councillor-b.json"
 inject_locale_hook "$AGENTS_DIR/councillor-b.json"
 
-# --- councillor-c (Gemini) ---
+# --- councillor-c ---
 jq -n \
   --arg prompt "file://${HOME_DIR}/.kiro/agents/councillor-c.md" \
   '{
     name: "councillor-c",
-    description: "Council advisor (Gemini). Read-only codebase analysis for multi-model consensus.",
+    description: "Council advisor. Read-only codebase analysis for multi-model consensus.",
     model: "claude-opus-4.5",
     tools: ["@builtin"],
     allowedTools: ["@builtin", "fs_*"],

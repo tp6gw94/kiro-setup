@@ -1,0 +1,273 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage:
+  codex-kiro dispatch <plan-dir>
+  codex-kiro status <plan-dir>
+  codex-kiro collect <plan-dir>
+  codex-kiro open <plan-dir>
+EOF
+}
+
+die() {
+  echo "codex-kiro: $*" >&2
+  exit 1
+}
+
+require_jq() {
+  command -v jq >/dev/null 2>&1 || die "jq is required"
+}
+
+require_plan_dir() {
+  local plan_dir="$1"
+  [[ -d "$plan_dir" ]] || die "plan directory not found: $plan_dir"
+}
+
+dispatch_file_for() {
+  echo "$1/dispatch.json"
+}
+
+status_file_for() {
+  echo "$1/kiro/status.json"
+}
+
+logs_dir_for() {
+  echo "$1/kiro/logs"
+}
+
+resolve_plan_path() {
+  local plan_dir="$1"
+  local path="$2"
+  if [[ "$path" = /* ]]; then
+    echo "$path"
+  else
+    echo "$plan_dir/$path"
+  fi
+}
+
+init_status() {
+  local plan_dir="$1"
+  mkdir -p "$(logs_dir_for "$plan_dir")"
+  cat > "$(status_file_for "$plan_dir")" <<'JSON'
+{
+  "version": 1,
+  "status": "running",
+  "jobs": {}
+}
+JSON
+}
+
+set_top_status() {
+  local plan_dir="$1"
+  local status="$2"
+  local file
+  file="$(status_file_for "$plan_dir")"
+  local tmp
+  tmp="${file}.tmp"
+  jq --arg status "$status" '.status = $status' "$file" > "$tmp" && mv "$tmp" "$file"
+}
+
+set_job_status() {
+  local plan_dir="$1"
+  local id="$2"
+  local agent="$3"
+  local wave="$4"
+  local status="$5"
+  local output="$6"
+  local stderr_log="$7"
+  local exit_code="$8"
+  local timestamp_field="$9"
+  local timestamp="${10}"
+  local file
+  file="$(status_file_for "$plan_dir")"
+  local tmp
+  tmp="${file}.tmp"
+
+  jq \
+    --arg id "$id" \
+    --arg agent "$agent" \
+    --arg wave "$wave" \
+    --arg status "$status" \
+    --arg output "$output" \
+    --arg stderrLog "$stderr_log" \
+    --argjson exitCode "$exit_code" \
+    --arg timestampField "$timestamp_field" \
+    --arg timestamp "$timestamp" \
+    '
+      .jobs[$id] = (.jobs[$id] // {})
+      | .jobs[$id].id = $id
+      | .jobs[$id].agent = $agent
+      | .jobs[$id].wave = $wave
+      | .jobs[$id].status = $status
+      | .jobs[$id].output = $output
+      | .jobs[$id].stderrLog = $stderrLog
+      | .jobs[$id].exitCode = $exitCode
+      | .jobs[$id][$timestampField] = $timestamp
+    ' "$file" > "$tmp" && mv "$tmp" "$file"
+}
+
+validate_dispatch() {
+  local dispatch_file="$1"
+  [[ -f "$dispatch_file" ]] || die "dispatch.json not found: $dispatch_file"
+
+  jq -e '
+    (.version == 1)
+    and (.mode == "non_interactive")
+    and (.waves | type == "array")
+    and all(.waves[]; (.jobs | type == "array"))
+    and all(.waves[].jobs[]; (.id | type == "string") and (.agent | type == "string") and (.prompt | type == "string") and (.output | type == "string"))
+  ' "$dispatch_file" >/dev/null || die "invalid dispatch.json schema: $dispatch_file"
+}
+
+run_job() {
+  local plan_dir="$1"
+  local wave_id="$2"
+  local job_json="$3"
+
+  local id agent prompt output_path stderr_log cwd trust_tools
+  id="$(jq -r '.id' <<<"$job_json")"
+  agent="$(jq -r '.agent' <<<"$job_json")"
+  prompt="$(jq -r '.prompt' <<<"$job_json")"
+  output_path="$(resolve_plan_path "$plan_dir" "$(jq -r '.output' <<<"$job_json")")"
+  stderr_log="$(logs_dir_for "$plan_dir")/${id}.stderr.log"
+  cwd="$(jq -r '.cwd // empty' <<<"$job_json")"
+  trust_tools="$(jq -r '.trustTools // empty' <<<"$job_json")"
+
+  mkdir -p "$(dirname "$output_path")" "$(dirname "$stderr_log")"
+
+  local started_at
+  started_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+  set_job_status "$plan_dir" "$id" "$agent" "$wave_id" "running" "$output_path" "$stderr_log" 0 "startedAt" "$started_at"
+
+  local rc=0
+  local -a cmd=(kiro-cli chat --no-interactive --agent "$agent")
+  if [[ -n "$trust_tools" ]]; then
+    cmd+=(--trust-tools "$trust_tools")
+  fi
+  cmd+=("$prompt")
+
+  if [[ -n "$cwd" ]]; then
+    (cd "$cwd" && "${cmd[@]}") >"$output_path" 2>"$stderr_log" || rc=$?
+  else
+    "${cmd[@]}" >"$output_path" 2>"$stderr_log" || rc=$?
+  fi
+
+  local finished_at
+  finished_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+  if [[ "$rc" -eq 0 ]]; then
+    set_job_status "$plan_dir" "$id" "$agent" "$wave_id" "done" "$output_path" "$stderr_log" "$rc" "finishedAt" "$finished_at"
+  else
+    set_job_status "$plan_dir" "$id" "$agent" "$wave_id" "failed" "$output_path" "$stderr_log" "$rc" "finishedAt" "$finished_at"
+    return "$rc"
+  fi
+}
+
+cmd_dispatch() {
+  local plan_dir="$1"
+  require_jq
+  require_plan_dir "$plan_dir"
+
+  local dispatch_file
+  dispatch_file="$(dispatch_file_for "$plan_dir")"
+  validate_dispatch "$dispatch_file"
+  command -v kiro-cli >/dev/null 2>&1 || die "kiro-cli not found in PATH"
+  init_status "$plan_dir"
+
+  local failed=0
+  local wave_count
+  wave_count="$(jq '.waves | length' "$dispatch_file")"
+  local wave_index
+  for ((wave_index = 0; wave_index < wave_count; wave_index++)); do
+    local wave_id
+    wave_id="$(jq -r --argjson i "$wave_index" '.waves[$i].id // ("wave-" + (($i + 1) | tostring))' "$dispatch_file")"
+    local job_count
+    job_count="$(jq --argjson i "$wave_index" '.waves[$i].jobs | length' "$dispatch_file")"
+    local job_index
+    for ((job_index = 0; job_index < job_count; job_index++)); do
+      local job_json
+      job_json="$(jq -c --argjson wi "$wave_index" --argjson ji "$job_index" '.waves[$wi].jobs[$ji]' "$dispatch_file")"
+      run_job "$plan_dir" "$wave_id" "$job_json" || failed=$?
+      if [[ "$failed" -ne 0 ]]; then
+        set_top_status "$plan_dir" "failed"
+        return "$failed"
+      fi
+    done
+  done
+
+  set_top_status "$plan_dir" "done"
+}
+
+cmd_status() {
+  local plan_dir="$1"
+  require_jq
+  require_plan_dir "$plan_dir"
+  local status_file
+  status_file="$(status_file_for "$plan_dir")"
+  [[ -f "$status_file" ]] || die "status.json not found: $status_file"
+
+  jq -r '
+    "overall: \(.status)",
+    (.jobs | to_entries[] | "\(.key)\t\(.value.status)\t\(.value.agent)\t\(.value.output)")
+  ' "$status_file"
+}
+
+cmd_collect() {
+  local plan_dir="$1"
+  require_jq
+  require_plan_dir "$plan_dir"
+  local status_file
+  status_file="$(status_file_for "$plan_dir")"
+  [[ -f "$status_file" ]] || die "status.json not found: $status_file"
+
+  while IFS=$'\t' read -r id output; do
+    echo "## $id"
+    if [[ -f "$output" ]]; then
+      cat "$output"
+    else
+      echo "Missing output: $output"
+    fi
+    echo
+  done < <(jq -r '.jobs | to_entries[] | [.key, .value.output] | @tsv' "$status_file")
+}
+
+cmd_open() {
+  local plan_dir="$1"
+  require_plan_dir "$plan_dir"
+  if command -v cmux >/dev/null 2>&1 && cmux ping >/dev/null 2>&1; then
+    if [[ -f "$plan_dir/task.md" ]]; then
+      cmux markdown open "$plan_dir/task.md" --focus true
+    else
+      cmux "$plan_dir"
+    fi
+  else
+    echo "$plan_dir"
+  fi
+}
+
+main() {
+  [[ $# -ge 1 ]] || {
+    usage
+    exit 1
+  }
+
+  local command="$1"
+  shift
+
+  case "$command" in
+    dispatch|status|collect|open)
+      [[ $# -eq 1 ]] || die "$command requires <plan-dir>"
+      "cmd_${command}" "$1"
+      ;;
+    -h|--help|help)
+      usage
+      ;;
+    *)
+      usage >&2
+      exit 1
+      ;;
+  esac
+}
+
+main "$@"

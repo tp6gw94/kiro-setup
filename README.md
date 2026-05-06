@@ -185,6 +185,62 @@ The hook includes a guard clause (`cmux ping || exit 0`) so it silently does not
 | `feedback-investigation.md` | Debugger's investigation |
 | `librarian-research.md` | Librarian's research findings |
 
+## Codex Integration
+
+`bin/codex-kiro` is a thin adapter for handing Codex-created plans to Kiro agents. Codex writes the task contract into `.plan/<task-name>/`, the adapter runs `kiro-cli chat --no-interactive --agent <agent>`, and Kiro outputs are written back to the same plan folder.
+
+### Commands
+
+```bash
+bin/codex-kiro dispatch .plan/<task-name>
+bin/codex-kiro status .plan/<task-name>
+bin/codex-kiro collect .plan/<task-name>
+bin/codex-kiro open .plan/<task-name>
+```
+
+### Codex-Owned Files
+
+| File | Purpose |
+|------|---------|
+| `task.md` | Task requirements |
+| `context.md` | Minimal handoff context; not a full chat transcript |
+| `acceptance.md` | Acceptance criteria |
+| `dispatch.json` | Jobs for the adapter to run |
+
+### Adapter-Owned Files
+
+| File | Purpose |
+|------|---------|
+| `kiro/status.json` | Overall and per-job status |
+| `kiro/logs/<job-id>.stderr.log` | Per-job stderr |
+
+### `dispatch.json`
+
+```json
+{
+  "version": 1,
+  "task": "my-feature",
+  "mode": "non_interactive",
+  "waves": [
+    {
+      "id": "wave-1",
+      "jobs": [
+        {
+          "id": "explore",
+          "agent": "explorer",
+          "prompt": "Read task.md and context.md, then write exploration-brief.md.",
+          "output": "exploration-brief.md"
+        }
+      ]
+    }
+  ]
+}
+```
+
+Each job requires `id`, `agent`, `prompt`, and `output`. Optional fields are `cwd` and `trustTools`. Relative output paths are resolved under the plan directory.
+
+For v1, `codex-kiro` only supports `mode: "non_interactive"`. cmux is an observation layer only: `open` uses cmux when available, but cmux socket state is not used as the source of truth.
+
 ## Settings
 
 | Setting | Value |

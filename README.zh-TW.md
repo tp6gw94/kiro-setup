@@ -277,6 +277,64 @@ supervisor 建立 .plan/my-feature/
 
 ---
 
+## Codex 整合
+
+`bin/codex-kiro` 是 Codex 與 Kiro CLI 之間的薄 adapter。Codex 將任務契約寫入 `.plan/<task-name>/`，adapter 執行 `kiro-cli chat --no-interactive --agent <agent>`，再把 Kiro agent 的輸出與狀態寫回同一個 plan 資料夾。
+
+### 指令
+
+```bash
+bin/codex-kiro dispatch .plan/<task-name>
+bin/codex-kiro status .plan/<task-name>
+bin/codex-kiro collect .plan/<task-name>
+bin/codex-kiro open .plan/<task-name>
+```
+
+### Codex 負責的檔案
+
+| 檔名 | 說明 |
+|------|------|
+| `task.md` | 任務需求 |
+| `context.md` | 最小交接背景，不放完整聊天紀錄 |
+| `acceptance.md` | 驗收標準 |
+| `dispatch.json` | adapter 要執行的 jobs |
+
+### Adapter 負責的檔案
+
+| 檔名 | 說明 |
+|------|------|
+| `kiro/status.json` | 整體與各 job 狀態 |
+| `kiro/logs/<job-id>.stderr.log` | 各 job 的 stderr |
+
+### `dispatch.json`
+
+```json
+{
+  "version": 1,
+  "task": "my-feature",
+  "mode": "non_interactive",
+  "waves": [
+    {
+      "id": "wave-1",
+      "jobs": [
+        {
+          "id": "explore",
+          "agent": "explorer",
+          "prompt": "Read task.md and context.md, then write exploration-brief.md.",
+          "output": "exploration-brief.md"
+        }
+      ]
+    }
+  ]
+}
+```
+
+每個 job 必須有 `id`、`agent`、`prompt`、`output`。可選欄位為 `cwd` 和 `trustTools`。相對輸出路徑會以 plan 資料夾為基準解析。
+
+v1 僅支援 `mode: "non_interactive"`。cmux 只作為觀測層：`open` 會在 cmux 可用時使用它，但 cmux socket state 不是狀態來源。
+
+---
+
 ## 設定值
 
 `settings/cli.json` 中的關鍵設定：

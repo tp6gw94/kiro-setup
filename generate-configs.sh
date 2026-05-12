@@ -294,19 +294,23 @@ jq -n \
   --arg skills "skill://${HOME_DIR}/.kiro/skills/**/SKILL.md" \
   --arg notify "${HOME_DIR}/.kiro/hooks/cmux-notify.sh" \
   --arg phase_reminder "$KIRO_DIR/hooks/phase-reminder.sh" \
+  --arg home_kiro "${HOME_DIR}/.kiro" \
   '{
     name: "code_supervisor",
     prompt: $prompt,
     model: "claude-opus-4.6",
     description: "Coding Supervisor Agent that orchestrates and delegates tasks to specialized agents",
-    tools: ["read", "use_subagent", "todo", "thinking", "introspect", "session", "@git"],
+    tools: ["shell", "read", "use_subagent", "todo", "thinking", "introspect", "session", "@git"],
     allowedTools: ["use_subagent", "todo", "thinking", "introspect", "session", "@git"],
     useLegacyMcpJson: false,
     keyboardShortcut: "ctrl+a",
     welcomeMessage: "What would you like to build? I'\''ll coordinate the team.",
     toolsSettings: {
+      shell: {
+        allowedCommands: ["cmux .*"]
+      },
       read: {
-        allowedPaths: ["./.plan/**", "/var/folders/**"]
+        allowedPaths: ["./.plan/**", "/var/folders/**", $home_kiro]
       },
       shell: {
         autoAllowReadonly: true

@@ -50,7 +50,7 @@ jq -n \
   '{
     name: "developer",
     description: "Developer Agent that writes high-quality, maintainable code based on specifications",
-    model: "claude-opus-4.7",
+    model: "claude-opus-4.6",
     tools: ["*", "@builtin"],
     allowedTools: ["@builtin", "fs_*", "execute_bash"],
     useLegacyMcpJson: false,
@@ -78,7 +78,7 @@ jq -n \
   '{
     name: "reviewer",
     description: "Code Reviewer Agent that performs thorough code reviews and ensures quality standards",
-    model: "claude-opus-4.7",
+    model: "claude-opus-4.6",
     tools: ["@builtin", "*"],
     allowedTools: ["@builtin", "fs_*", "execute_bash"],
     useLegacyMcpJson: false,
@@ -104,7 +104,7 @@ jq -n \
   '{
     name: "designer",
     description: "Designer Agent that reads Figma designs and extracts design specifications for implementation",
-    model: "claude-opus-4.7",
+    model: "claude-opus-4.6",
     tools: ["*"],
     allowedTools: ["@builtin", "fs_*", "execute_bash", "@figma-developer-mcp"],
     useLegacyMcpJson: false,
@@ -133,7 +133,7 @@ jq -n \
   '{
     name: "explorer",
     description: "Explorer Agent that investigates codebases, reads documentation, and researches library usage via Context7 and Exa",
-    model: "claude-opus-4.7",
+    model: "claude-opus-4.6",
     tools: ["@builtin", "*"],
     allowedTools: ["@builtin", "fs_*", "execute_bash", "@context7", "@exa", "@github-grep"],
     useLegacyMcpJson: false,
@@ -179,7 +179,7 @@ jq -n \
   '{
     name: "simplifier",
     description: "Code Simplifier Agent that refines code for clarity, consistency, and maintainability while preserving functionality",
-    model: "claude-opus-4.7",
+    model: "claude-opus-4.6",
     tools: ["@builtin", "*"],
     allowedTools: ["@builtin", "fs_*", "execute_bash", "@git"],
     useLegacyMcpJson: false,
@@ -214,7 +214,7 @@ jq -n \
   '{
     name: "tester",
     description: "Test Engineer Agent that designs test suites, writes tests, analyzes coverage gaps, and verifies code changes",
-    model: "claude-opus-4.7",
+    model: "claude-opus-4.6",
     tools: ["*", "@builtin"],
     allowedTools: ["@builtin", "fs_*", "execute_bash"],
     useLegacyMcpJson: false,
@@ -240,7 +240,7 @@ jq -n \
   '{
     name: "debugger",
     description: "Debugger Agent that investigates user-reported issues, confirms root causes, and produces investigation reports",
-    model: "claude-opus-4.7",
+    model: "claude-opus-4.6",
     tools: ["@builtin", "*"],
     allowedTools: ["@builtin", "fs_*", "execute_bash"],
     useLegacyMcpJson: false,
@@ -265,7 +265,7 @@ jq -n \
   '{
     name: "planner",
     description: "Planner Agent that analyzes context and produces structured execution plans",
-    model: "claude-opus-4.7",
+    model: "claude-opus-4.6",
     tools: ["@builtin"],
     allowedTools: ["@builtin", "fs_*"],
     useLegacyMcpJson: false,
@@ -297,14 +297,17 @@ jq -n \
   '{
     name: "code_supervisor",
     prompt: $prompt,
-    model: "claude-opus-4.7",
+    model: "claude-opus-4.6",
     description: "Coding Supervisor Agent that orchestrates and delegates tasks to specialized agents",
     tools: ["read", "use_subagent", "todo", "thinking", "introspect", "session", "@git"],
-    allowedTools: ["read", "use_subagent", "todo", "thinking", "introspect", "session", "@git"],
+    allowedTools: ["use_subagent", "todo", "thinking", "introspect", "session", "@git"],
     useLegacyMcpJson: false,
     keyboardShortcut: "ctrl+a",
     welcomeMessage: "What would you like to build? I'\''ll coordinate the team.",
     toolsSettings: {
+      read: {
+        allowedPaths: ["./.plan/**", "/var/folders/**"]
+      },
       shell: {
         autoAllowReadonly: true
       },
@@ -354,7 +357,7 @@ jq -n \
   '{
     name: "librarian",
     description: "Library documentation and API research specialist",
-    model: "claude-opus-4.7",
+    model: "claude-opus-4.6",
     tools: ["@builtin", "*"],
     allowedTools: ["@builtin", "fs_*", "@context7", "@exa", "@github-grep"],
     useLegacyMcpJson: false,
@@ -394,7 +397,7 @@ jq -n \
   '{
     name: "researcher",
     description: "Research Agent that finds, analyzes, and explains academic papers using Exa",
-    model: "claude-opus-4.7",
+    model: "claude-opus-4.6",
     tools: ["*"],
     allowedTools: ["@builtin", "@exa"],
     useLegacyMcpJson: false,
@@ -418,7 +421,7 @@ jq -n \
   '{
     name: "councillor-a",
     description: "Council advisor (Opus). Read-only codebase analysis for multi-model consensus.",
-    model: "claude-opus-4.7",
+    model: "claude-opus-4.6",
     tools: ["@builtin"],
     allowedTools: ["@builtin", "fs_*"],
     useLegacyMcpJson: false,
@@ -484,7 +487,7 @@ jq -n \
   '{
     name: "council-master",
     description: "Council synthesis engine. Reviews councillor responses and produces the final answer.",
-    model: "claude-opus-4.7",
+    model: "claude-opus-4.6",
     tools: ["@builtin"],
     allowedTools: ["@builtin", "fs_*"],
     useLegacyMcpJson: false,

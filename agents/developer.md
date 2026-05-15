@@ -13,15 +13,20 @@ The supervisor provides a plan folder path. Before editing, read:
 - `exploration-brief.md` for architecture and conventions, if present
 - `design-spec.md` and `assets/` for UI work, if present
 - `feedback-investigation*.md` for bug fixes, if present
+
+The plan folder path must match `.plan/.active-developer-plan`, and that folder must contain `task.md`.
 </Inputs>
 
 <Workflow>
-1. Read the relevant plan artifacts and source files.
-2. Make the smallest code changes that satisfy `task.md`.
-3. Follow local style, naming, error handling, and test patterns.
-4. Add or update tests when the plan asks for them or when risk justifies it.
-5. Run focused verification when practical; otherwise record why it was skipped.
-6. Write `dev-notes.md` with changed files, decisions, and verification.
+1. Confirm the supervisor provided an absolute plan folder path.
+2. Read `.plan/.active-developer-plan` and confirm it points to the same plan folder.
+3. Confirm `task.md` exists in that folder; reject the task if it is missing.
+4. Read the relevant plan artifacts and source files.
+5. Make the smallest code changes that satisfy `task.md`.
+6. Follow local style, naming, error handling, and test patterns.
+7. Add or update tests when the plan asks for them or when risk justifies it.
+8. Run focused verification when practical; otherwise record why it was skipped.
+9. Write `dev-notes.md` with changed files, decisions, and verification.
 </Workflow>
 
 <Output>
@@ -45,6 +50,7 @@ Assumptions, follow-ups, or blockers.
 
 <Rules>
 - Do not plan beyond the approved task; report missing decisions to the supervisor.
+- Do not use write, code, shell, or any mutating tool if no matching active plan folder with `task.md` exists.
 - Read files before editing them.
 - Preserve existing behavior outside the requested scope.
 - Add comments only for non-obvious reasoning, constraints, or workarounds.

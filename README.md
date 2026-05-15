@@ -1,6 +1,6 @@
 # Kiro CLI Configuration
 
-Multi-agent AI coding orchestrator powered by Kiro CLI. Features 16 specialized agents, 6 custom hooks, 24 skills, and a code-gen config pipeline.
+Multi-agent AI coding orchestrator powered by Kiro CLI. Features 14 specialized agents, 9 custom hooks, 24 skills, and a code-gen config pipeline.
 
 ## Architecture Overview
 
@@ -13,13 +13,13 @@ Multi-agent AI coding orchestrator powered by Kiro CLI. Features 16 specialized 
             ┌────────────────────┼────────────────────┐
             ▼                    ▼                     ▼
    ┌─────────────────┐  ┌──────────────┐  ┌────────────────────┐
-   │   10 leaf agents │  │  4 council   │  │  .plan/ folder     │
+   │   9 leaf agents  │  │  4 council   │  │  .plan/ folder     │
    │   (specialists)  │  │  agents      │  │  (inter-agent IPC) │
    └─────────────────┘  └──────────────┘  └────────────────────┘
 ```
 
 - `code_supervisor` is the orchestrator — dispatches to leaf agents via the `subagent` tool
-- 10 leaf agents: developer, reviewer, designer, explorer, simplifier, tester, debugger, planner, librarian, researcher
+- 9 leaf agents: developer, reviewer, designer, explorer, simplifier, tester, debugger, planner, researcher
 - 4 council agents: councillor-a, councillor-b, councillor-c, council-master (multi-model consensus)
 - All agent prompts use XML tag format (`<Role>`, `<Agents>`, `<Workflow>`, etc.)
 
@@ -59,12 +59,11 @@ kiro-cli chat   # defaults to code_supervisor agent
 | developer | Code implementation | claude-opus-4.6 | `ctrl+shift+d` |
 | reviewer | Code review & YAGNI enforcement | claude-opus-4.6 | `ctrl+r` |
 | designer | Figma design extraction | claude-opus-4.6 | `ctrl+shift+f` |
-| explorer | Codebase investigation | claude-opus-4.6 | `ctrl+e` |
+| explorer | Codebase investigation & library/API research | claude-opus-4.6 | `ctrl+e` |
 | simplifier | Code refinement | claude-opus-4.6 | `ctrl+shift+s` |
 | tester | Test suite design | claude-opus-4.6 | `ctrl+t` |
 | debugger | Root cause investigation | claude-opus-4.6 | `ctrl+b` |
 | planner | Execution plans | claude-opus-4.6 | `ctrl+p` |
-| librarian | Library docs research | claude-opus-4.6 | `ctrl+l` |
 | researcher | Academic paper search | claude-opus-4.6 | `ctrl+shift+r` |
 
 ### Orchestrator
@@ -84,7 +83,7 @@ kiro-cli chat   # defaults to code_supervisor agent
 
 ## Hooks
 
-6 hooks total — 4 base hooks for all agents + 2 supervisor-only hooks.
+9 hooks total — 4 base hooks for all agents, 2 supervisor-only hooks, 1 supervisor read gate, 1 `.plan` write gate, and 1 active-plan gate for source-writing agents.
 
 | Hook | Trigger | Scope | Description |
 |------|---------|-------|-------------|
@@ -92,8 +91,11 @@ kiro-cli chat   # defaults to code_supervisor agent
 | `rtk-rules.sh` | `agentSpawn` | Most agents | Injects RTK usage instructions into agent context at startup |
 | `caveman.sh` | `agentSpawn` | All agents | Injects caveman speech style instruction |
 | `locale.sh` | `agentSpawn` | All agents | Injects Traditional Chinese (繁體中文) locale instruction |
-| `phase-reminder.sh` | `userPromptSubmit` | code_supervisor | Reminds orchestrator of 6-phase workflow on every prompt |
+| `phase-reminder.sh` | `userPromptSubmit` | code_supervisor | Injects a hard workflow reminder for plan checks, delegation, execution, and verification on every prompt |
 | `cmux-notify.sh` | `stop` | code_supervisor | Desktop notification via cmux when response completes |
+| `validate-read-allowed-paths.sh` | `preToolUse` | code_supervisor | Blocks read tools outside `.plan/`, Kiro home, and `/var/folders` |
+| `validate-write-plan-folder.sh` | `preToolUse` | `.plan` artifact writers | Blocks write tools outside `.plan/` |
+| `validate-developer-plan.sh` | `preToolUse` | source-writing agents | Blocks write/code/shell tools unless `.plan/.active-developer-plan` points to a task folder containing `task.md` |
 
 ## RTK Integration
 
@@ -165,7 +167,7 @@ The hook includes a guard clause (`cmux ping || exit 0`) so it silently does not
 
 - `.md` prompt files and `.sh` hook scripts are **git-tracked**
 - `.json` agent configs are **generated at runtime** (gitignored)
-- Hook injection: 4 base hooks applied to all agents + 2 supervisor-only hooks
+- Hook injection: 4 base hooks applied to all agents + 2 supervisor-only hooks + `.plan` and active-plan write gates
 
 ## Plan Folder Protocol
 
@@ -183,7 +185,6 @@ The hook includes a guard clause (`cmux ping || exit 0`) so it silently does not
 | `test-notes.md` | Tester's test plan |
 | `review.md` | Reviewer's code review |
 | `feedback-investigation.md` | Debugger's investigation |
-| `librarian-research.md` | Librarian's research findings |
 
 ## Settings
 

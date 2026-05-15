@@ -15,7 +15,7 @@ RTK_HOOK="$KIRO_DIR/hooks/rtk-rewrite.sh"
 inject_rtk_hook() {
   local agent_file="$1"
   jq --arg hook "$RTK_HOOK" \
-    '.hooks.preToolUse = (.hooks.preToolUse // []) + [{ command: $hook, matcher: "execute_bash" }]' \
+    '.hooks.preToolUse = (.hooks.preToolUse // []) + [{ command: $hook, matcher: "shell" }]' \
     "$agent_file" > "${agent_file}.tmp" && mv "${agent_file}.tmp" "$agent_file"
 }
 
@@ -24,6 +24,26 @@ inject_rtk_spawn_hook() {
   local agent_file="$1"
   jq --arg hook "$RTK_SPAWN_HOOK" \
     '.hooks.agentSpawn = (.hooks.agentSpawn // []) + [{ command: $hook }]' \
+    "$agent_file" > "${agent_file}.tmp" && mv "${agent_file}.tmp" "$agent_file"
+}
+
+DEVELOPER_PLAN_HOOK="$KIRO_DIR/hooks/validate-developer-plan.sh"
+inject_developer_plan_hook() {
+  local agent_file="$1"
+  jq --arg hook "$DEVELOPER_PLAN_HOOK" \
+    '.hooks.preToolUse = (.hooks.preToolUse // []) + [
+      { command: $hook, matcher: "write" },
+      { command: $hook, matcher: "code" },
+      { command: $hook, matcher: "shell" }
+    ]' \
+    "$agent_file" > "${agent_file}.tmp" && mv "${agent_file}.tmp" "$agent_file"
+}
+
+PLAN_FOLDER_WRITE_HOOK="$KIRO_DIR/hooks/validate-write-plan-folder.sh"
+inject_plan_folder_write_hook() {
+  local agent_file="$1"
+  jq --arg hook "$PLAN_FOLDER_WRITE_HOOK" \
+    '.hooks.preToolUse = (.hooks.preToolUse // []) + [{ command: $hook, matcher: "write" }]' \
     "$agent_file" > "${agent_file}.tmp" && mv "${agent_file}.tmp" "$agent_file"
 }
 
@@ -42,20 +62,46 @@ inject_locale_hook() {
 }
 
 echo "Generating Kiro configs..."
+rm -f "$AGENTS_DIR/librarian.json"
 
 # --- developer ---
 jq -n \
   --arg prompt "file://${HOME_DIR}/.kiro/agents/developer.md" \
   --arg skills "skill://${HOME_DIR}/.kiro/skills/**/SKILL.md" \
+  --arg home_kiro "${HOME_DIR}/.kiro" \
   '{
     name: "developer",
     description: "Developer Agent that writes high-quality, maintainable code based on specifications",
     model: "claude-opus-4.6",
-    tools: ["*", "@builtin"],
-    allowedTools: ["@builtin", "fs_*", "execute_bash"],
+    tools: ["read", "write", "code", "glob", "grep", "shell", "todo"],
+    allowedTools: ["code", "todo"],
     useLegacyMcpJson: false,
-    keyboardShortcut: "ctrl+shift+d",
-    welcomeMessage: "Ready to implement. What'\''s the task?",
+    toolsSettings: {
+      glob: {
+        allowedPaths: ["./"]
+      },
+      read: {
+        allowedPaths: ["./", $home_kiro]
+      },
+      grep: {
+        allowedPaths: ["./"]
+      },
+      write: {
+        allowedPaths: ["./"]
+      },
+      shell: {
+        allowedCommands: [
+          "rtk pnpm[[:space:]]+(?:test|typecheck|lint|build)(?:[[:space:]].*)?",
+          "rtk pnpm[[:space:]]+(?:run[[:space:]]+)?(?:test|typecheck|lint|build)(?:[[:space:]].*)?",
+          "rtk tsc(?:[[:space:]].*)?",
+          "rtk cat .*",
+          "rtk sed .*",
+          "rtk head .*"
+        ],
+        autoAllowReadonly: true,
+        denyByDefault: true
+      }
+    },
     resources: [
       "file://CLAUDE.md",
       "file://.kiro/steering/*.md",
@@ -66,6 +112,7 @@ jq -n \
     ],
     prompt: $prompt
   }' > "$AGENTS_DIR/developer.json"
+inject_developer_plan_hook "$AGENTS_DIR/developer.json"
 inject_rtk_hook "$AGENTS_DIR/developer.json"
 inject_rtk_spawn_hook "$AGENTS_DIR/developer.json"
 inject_caveman_hook "$AGENTS_DIR/developer.json"
@@ -75,15 +122,40 @@ inject_locale_hook "$AGENTS_DIR/developer.json"
 jq -n \
   --arg prompt "file://${HOME_DIR}/.kiro/agents/reviewer.md" \
   --arg skills "skill://${HOME_DIR}/.kiro/skills/**/SKILL.md" \
+  --arg home_kiro "${HOME_DIR}/.kiro" \
   '{
     name: "reviewer",
-    description: "Code Reviewer Agent that performs thorough code reviews and ensures quality standards",
     model: "claude-opus-4.6",
-    tools: ["@builtin", "*"],
-    allowedTools: ["@builtin", "fs_*", "execute_bash"],
+    tools: ["read", "write", "grep", "glob", "shell"],
+    allowedTools: [],
+    toolsSettings: {
+      glob: {
+        allowedPaths: ["./"]
+      },
+      read: {
+        allowedPaths: ["./", $home_kiro]
+      },
+      grep: {
+        allowedPaths: ["./"]
+      },
+      write: {
+        allowedPaths: ["./.plan"]
+      },
+      shell: {
+        allowedCommands: [
+          "rtk git[[:space:]]+(?:status|diff|show|log|rev-parse|merge-base)(?:[[:space:]].*)?",
+          "rtk pnpm[[:space:]]+(?:test|typecheck|lint|build)(?:[[:space:]].*)?",
+          "rtk pnpm[[:space:]]+run[[:space:]]+(?:test|typecheck|lint|build)(?:[[:space:]].*)?",
+          "rtk npm[[:space:]]+run[[:space:]]+(?:test|typecheck|lint|build)(?:[[:space:]].*)?",
+          "rtk playwright-cli[[:space:]]+--help",
+          "rtk cat .*",
+          "rtk head .*"
+        ],
+        autoAllowReadonly: true,
+        denyByDefault: true
+      }
+    },
     useLegacyMcpJson: false,
-    keyboardShortcut: "ctrl+r",
-    welcomeMessage: "What code needs review?",
     resources: [
       "skill://.kiro/skills/*/SKILL.md",
       "file:///./CLAUDE.md",
@@ -92,6 +164,7 @@ jq -n \
     ],
     prompt: $prompt
   }' > "$AGENTS_DIR/reviewer.json"
+inject_plan_folder_write_hook "$AGENTS_DIR/reviewer.json"
 inject_rtk_hook "$AGENTS_DIR/reviewer.json"
 inject_rtk_spawn_hook "$AGENTS_DIR/reviewer.json"
 inject_caveman_hook "$AGENTS_DIR/reviewer.json"
@@ -101,15 +174,22 @@ inject_locale_hook "$AGENTS_DIR/reviewer.json"
 jq -n \
   --arg prompt "file://${HOME_DIR}/.kiro/agents/designer.md" \
   --arg skills "skill://${HOME_DIR}/.kiro/skills/**/SKILL.md" \
+  --arg home_kiro "${HOME_DIR}/.kiro" \
   '{
     name: "designer",
     description: "Designer Agent that reads Figma designs and extracts design specifications for implementation",
     model: "claude-opus-4.6",
-    tools: ["*"],
-    allowedTools: ["@builtin", "fs_*", "execute_bash", "@figma-developer-mcp"],
+    tools: ["read", "write", "@figma-developer-mcp"],
+    allowedTools: ["@figma-developer-mcp"],
     useLegacyMcpJson: false,
-    keyboardShortcut: "ctrl+shift+f",
-    welcomeMessage: "What UI/UX needs attention?",
+    toolsSettings: {
+      read: {
+        allowedPaths: ["./.plan", $home_kiro],
+      },
+      write: { 
+        allowedPaths: ["./.plan"],
+      }
+    },
     resources: [],
     mcpServers: {
       "figma-developer-mcp": {
@@ -120,6 +200,7 @@ jq -n \
     },
     prompt: $prompt
   }' > "$AGENTS_DIR/designer.json"
+inject_plan_folder_write_hook "$AGENTS_DIR/designer.json"
 inject_rtk_hook "$AGENTS_DIR/designer.json"
 inject_rtk_spawn_hook "$AGENTS_DIR/designer.json"
 inject_caveman_hook "$AGENTS_DIR/designer.json"
@@ -134,15 +215,12 @@ jq -n \
     name: "explorer",
     description: "Explorer Agent that investigates codebases, reads documentation, and researches library usage via Context7 and Exa",
     model: "claude-opus-4.6",
-    tools: ["@builtin", "*"],
-    allowedTools: ["@builtin", "fs_*", "execute_bash", "@context7", "@exa", "@github-grep"],
+    tools: ["read", "write", "grep", "glob", "@context7", "@exa", "@github-grep"],
+    allowedTools: ["read", "grep", "glob", "@context7", "@exa", "@github-grep"],
     useLegacyMcpJson: false,
-    keyboardShortcut: "ctrl+e",
-    welcomeMessage: "What do you need to find in the codebase?",
     toolsSettings: {
-      fs_write: {
-        allowedPaths: [".plan/**"],
-        fallbackAction: "deny"
+      write: {
+        allowedPaths: ["./.plan"]
       },
     },
     resources: [
@@ -167,6 +245,7 @@ jq -n \
     },
     prompt: $prompt
   }' > "$AGENTS_DIR/explorer.json"
+inject_plan_folder_write_hook "$AGENTS_DIR/explorer.json"
 inject_rtk_hook "$AGENTS_DIR/explorer.json"
 inject_rtk_spawn_hook "$AGENTS_DIR/explorer.json"
 inject_caveman_hook "$AGENTS_DIR/explorer.json"
@@ -176,15 +255,28 @@ inject_locale_hook "$AGENTS_DIR/explorer.json"
 jq -n \
   --arg prompt "file://${HOME_DIR}/.kiro/agents/simplifier.md" \
   --arg skills "skill://${HOME_DIR}/.kiro/skills/**/SKILL.md" \
+  --arg home_kiro "${HOME_DIR}/.kiro" \
   '{
     name: "simplifier",
     description: "Code Simplifier Agent that refines code for clarity, consistency, and maintainability while preserving functionality",
     model: "claude-opus-4.6",
-    tools: ["@builtin", "*"],
-    allowedTools: ["@builtin", "fs_*", "execute_bash", "@git"],
+    tools: ["read", "write", "grep", "glob", "shell", "@git"],
+    allowedTools: ["shell", "@git/git_status", "@git/git_diff", "@git/git_diff_*"],
     useLegacyMcpJson: false,
-    keyboardShortcut: "ctrl+shift+s",
-    welcomeMessage: "What code needs simplification?",
+    toolsSettings: {
+      glob: {
+        allowedPaths: ["./"]
+      },
+      read: {
+        allowedPaths: ["./", $home_kiro]
+      },
+      grep: {
+        allowedPaths: ["./"]
+      },
+      write: {
+        allowedPaths: ["./"]
+      },
+    },
     resources: [
       $skills,
       "skill://.kiro/skills/*/SKILL.md",
@@ -202,6 +294,7 @@ jq -n \
     },
     prompt: $prompt
   }' > "$AGENTS_DIR/simplifier.json"
+inject_developer_plan_hook "$AGENTS_DIR/simplifier.json"
 inject_rtk_hook "$AGENTS_DIR/simplifier.json"
 inject_rtk_spawn_hook "$AGENTS_DIR/simplifier.json"
 inject_caveman_hook "$AGENTS_DIR/simplifier.json"
@@ -211,15 +304,28 @@ inject_locale_hook "$AGENTS_DIR/simplifier.json"
 jq -n \
   --arg prompt "file://${HOME_DIR}/.kiro/agents/tester.md" \
   --arg skills "skill://${HOME_DIR}/.kiro/skills/**/SKILL.md" \
+  --arg home_kiro "${HOME_DIR}/.kiro" \
   '{
     name: "tester",
     description: "Test Engineer Agent that designs test suites, writes tests, analyzes coverage gaps, and verifies code changes",
     model: "claude-opus-4.6",
-    tools: ["*", "@builtin"],
-    allowedTools: ["@builtin", "fs_*", "execute_bash"],
+    tools: ["read", "write", "code", "grep", "glob", "shell"],
+    allowedTools: ["shell", "code", "grep", "glob"],
+    toolsSettings: {
+      grep: {
+        allowedPaths: ["./"]
+      },
+      glob: {
+        allowedPaths: ["./"]
+      },
+      read: {
+        allowedPaths: ["./", $home_kiro]
+      },
+      write: {
+        allowedPaths: ["./"]
+      },
+    },
     useLegacyMcpJson: false,
-    keyboardShortcut: "ctrl+t",
-    welcomeMessage: "What needs testing?",
     resources: [
       $skills,
       "file://.kiro/steering/*.md",
@@ -228,6 +334,7 @@ jq -n \
     ],
     prompt: $prompt
   }' > "$AGENTS_DIR/tester.json"
+inject_developer_plan_hook "$AGENTS_DIR/tester.json"
 inject_rtk_hook "$AGENTS_DIR/tester.json"
 inject_rtk_spawn_hook "$AGENTS_DIR/tester.json"
 inject_caveman_hook "$AGENTS_DIR/tester.json"
@@ -237,21 +344,35 @@ inject_locale_hook "$AGENTS_DIR/tester.json"
 jq -n \
   --arg prompt "file://${HOME_DIR}/.kiro/agents/debugger.md" \
   --arg skills "skill://${HOME_DIR}/.kiro/skills/**/SKILL.md" \
+  --arg home_kiro "${HOME_DIR}/.kiro" \
   '{
     name: "debugger",
     description: "Debugger Agent that investigates user-reported issues, confirms root causes, and produces investigation reports",
     model: "claude-opus-4.6",
-    tools: ["@builtin", "*"],
-    allowedTools: ["@builtin", "fs_*", "execute_bash"],
+    tools: ["read", "write", "glob", "grep", "shell"],
+    allowedTools: ["shell"],
+    toolsSettings: {
+      grep: {
+        allowedPaths: ["./"]
+      },
+      glob: {
+        allowedPaths: ["./"]
+      },
+      read: {
+        allowedPaths: ["./", $home_kiro]
+      },
+      write: {
+        allowedPaths: ["./.plan"]
+      },
+    },
     useLegacyMcpJson: false,
-    keyboardShortcut: "ctrl+b",
-    welcomeMessage: "What issue are you investigating?",
     resources: [
       $skills,
       "file://.kiro/steering/*.md"
     ],
     prompt: $prompt
   }' > "$AGENTS_DIR/debugger.json"
+inject_plan_folder_write_hook "$AGENTS_DIR/debugger.json"
 inject_rtk_hook "$AGENTS_DIR/debugger.json"
 inject_rtk_spawn_hook "$AGENTS_DIR/debugger.json"
 inject_caveman_hook "$AGENTS_DIR/debugger.json"
@@ -262,20 +383,28 @@ jq -n \
   --arg prompt "file://${HOME_DIR}/.kiro/agents/planner.md" \
   --arg skills "skill://${HOME_DIR}/.kiro/skills/**/SKILL.md" \
   --arg grill "skill://${HOME_DIR}/.kiro/skills/grill-me/SKILL.md" \
+  --arg home_kiro "${HOME_DIR}/.kiro" \
   '{
     name: "planner",
     description: "Planner Agent that analyzes context and produces structured execution plans",
     model: "claude-opus-4.6",
-    tools: ["@builtin"],
-    allowedTools: ["@builtin", "fs_*"],
+    tools: ["read", "write", "grep", "glob"],
+    allowedTools: [],
     useLegacyMcpJson: false,
-    keyboardShortcut: "ctrl+p",
     welcomeMessage: "What task needs a plan?",
     toolsSettings: {
-      fs_write: {
-        allowedPaths: [".plan/**"],
-        fallbackAction: "deny"
-      }
+      grep: {
+        allowedPaths: ["./"]
+      },
+      glob: {
+        allowedPaths: ["./"]
+      },
+      read: {
+        allowedPaths: ["./", $home_kiro]
+      },
+      write: {
+        allowedPaths: ["./.plan"]
+      },
     },
     resources: [
       "skill://.kiro/skills/*/SKILL.md",
@@ -285,6 +414,7 @@ jq -n \
     ],
     prompt: $prompt
   }' > "$AGENTS_DIR/planner.json"
+inject_plan_folder_write_hook "$AGENTS_DIR/planner.json"
 inject_caveman_hook "$AGENTS_DIR/planner.json"
 inject_locale_hook "$AGENTS_DIR/planner.json"
 
@@ -294,35 +424,31 @@ jq -n \
   --arg skills "skill://${HOME_DIR}/.kiro/skills/**/SKILL.md" \
   --arg notify "${HOME_DIR}/.kiro/hooks/cmux-notify.sh" \
   --arg phase_reminder "$KIRO_DIR/hooks/phase-reminder.sh" \
-  --arg validate_write "${HOME_DIR}/.kiro/hooks/validate-write.sh" \
-  --arg home_kiro "${HOME_DIR}/.kiro/**" \
+  --arg validate_write "${HOME_DIR}/.kiro/hooks/validate-write-plan-folder.sh" \
+  --arg validate_read "${HOME_DIR}/.kiro/hooks/validate-read-allowed-paths.sh" \
+  --arg home_kiro "${HOME_DIR}/.kiro" \
   '{
     name: "code_supervisor",
     prompt: $prompt,
     model: "claude-opus-4.6",
     description: "Coding Supervisor Agent that orchestrates and delegates tasks to specialized agents",
-    tools: ["shell", "grep", "read", "write", "use_subagent", "todo", "thinking", "introspect", "session", "@git"],
+    tools: ["shell", "read", "write", "use_subagent", "todo", "thinking", "introspect", "session", "@git"],
     allowedTools: ["use_subagent", "todo", "thinking", "introspect", "session", "@git"],
     useLegacyMcpJson: false,
-    keyboardShortcut: "ctrl+a",
-    welcomeMessage: "What would you like to build? I'\''ll coordinate the team.",
     toolsSettings: {
       write: {
-        allowedPaths: ["./.plan/**"]
-      },
-      grep: {
-        allowedPaths: ["./.plan/**", "/var/folders/**", $home_kiro]
+        allowedPaths: ["./.plan"]
       },
       read: {
-        allowedPaths: ["./.plan/**", "/var/folders/**", $home_kiro]
+        allowedPaths: ["./.plan", "/var/folders", $home_kiro]
       },
       shell: {
         allowedCommands: ["cmux .*", "git .*"],
         denyByDefault: true
       },
       subagent: {
-        availableAgents: ["planner", "designer", "developer", "explorer", "reviewer", "simplifier", "tester", "debugger", "librarian", "councillor-a", "councillor-b", "councillor-c", "council-master"],
-        trustedAgents: ["planner", "designer", "developer", "explorer", "reviewer", "simplifier", "tester", "debugger", "librarian", "councillor-a", "councillor-b", "councillor-c", "council-master"]
+        availableAgents: ["planner", "designer", "developer", "explorer", "reviewer", "simplifier", "tester", "debugger", "councillor-a", "councillor-b", "councillor-c", "council-master"],
+        trustedAgents: ["planner", "designer", "developer", "explorer", "reviewer", "simplifier", "tester", "debugger", "councillor-a", "councillor-b", "councillor-c", "council-master"]
       }
     },
     resources: [
@@ -354,6 +480,10 @@ jq -n \
       ],
       preToolUse: [
         {
+          command: $validate_read,
+          matcher: "read"
+        },
+        {
           command: $validate_write,
           matcher: "write"
         }
@@ -362,47 +492,6 @@ jq -n \
   }' > "$AGENTS_DIR/code_supervisor.json"
 inject_caveman_hook "$AGENTS_DIR/code_supervisor.json"
 inject_locale_hook "$AGENTS_DIR/code_supervisor.json"
-
-# --- librarian ---
-jq -n \
-  --arg prompt "file://${HOME_DIR}/.kiro/agents/librarian.md" \
-  --arg exa_key "${EXA_API_KEY}" \
-  --arg exa_skill "skill://${HOME_DIR}/.kiro/skills/get-code-context-exa/SKILL.md" \
-  --arg c7_skill "skill://${HOME_DIR}/.kiro/skills/context7-auto-research/SKILL.md" \
-  '{
-    name: "librarian",
-    description: "Library documentation and API research specialist",
-    model: "claude-opus-4.6",
-    tools: ["@builtin", "*"],
-    allowedTools: ["@builtin", "fs_*", "@context7", "@exa", "@github-grep"],
-    useLegacyMcpJson: false,
-    keyboardShortcut: "ctrl+l",
-    welcomeMessage: "What library or API do you need docs for?",
-    resources: [
-      $exa_skill,
-      $c7_skill,
-      "skill://.kiro/skills/*/SKILL.md",
-      "file://.kiro/steering/*.md"
-    ],
-    mcpServers: {
-      context7: {
-        type: "stdio",
-        command: "npx",
-        args: ["-y", "@upstash/context7-mcp"]
-      },
-      exa: {
-        type: "remote",
-        url: ("https://mcp.exa.ai/mcp?exaApiKey=" + $exa_key)
-      },
-      "github-grep": {
-        type: "remote",
-        url: "https://mcp.grep.app"
-      }
-    },
-    prompt: $prompt
-  }' > "$AGENTS_DIR/librarian.json"
-inject_caveman_hook "$AGENTS_DIR/librarian.json"
-inject_locale_hook "$AGENTS_DIR/librarian.json"
 
 # --- researcher ---
 jq -n \
@@ -416,7 +505,6 @@ jq -n \
     tools: ["*"],
     allowedTools: ["@builtin", "@exa"],
     useLegacyMcpJson: false,
-    keyboardShortcut: "ctrl+shift+r",
     welcomeMessage: "What research topic or paper are you looking for?",
     resources: [$exa_skill],
     mcpServers: {
@@ -433,16 +521,18 @@ inject_locale_hook "$AGENTS_DIR/researcher.json"
 # --- councillor-a (Claude Opus) ---
 jq -n \
   --arg prompt "file://${HOME_DIR}/.kiro/agents/councillor-a.md" \
+  --arg home_kiro "${HOME_DIR}/.kiro" \
   '{
     name: "councillor-a",
     description: "Council advisor (Opus). Read-only codebase analysis for multi-model consensus.",
     model: "claude-opus-4.6",
-    tools: ["@builtin"],
-    allowedTools: ["@builtin", "fs_*"],
+    tools: ["read", "grep", "glob"],
+    allowedTools: ["read", "grep", "glob"],
     useLegacyMcpJson: false,
     toolsSettings: {
-      fs_write: { deniedPaths: ["**"], fallbackAction: "deny" },
-      execute_bash: { denyByDefault: true }
+      read: { allowedPaths: ["./", $home_kiro] },
+      grep: { allowedPaths: ["./"] },
+      glob: { allowedPaths: ["./"] }
     },
     resources: [
       "file://.kiro/steering/*.md"
@@ -455,16 +545,18 @@ inject_locale_hook "$AGENTS_DIR/councillor-a.json"
 # --- councillor-b (Claude Sonnet) ---
 jq -n \
   --arg prompt "file://${HOME_DIR}/.kiro/agents/councillor-b.md" \
+  --arg home_kiro "${HOME_DIR}/.kiro" \
   '{
     name: "councillor-b",
     description: "Council advisor (Sonnet). Read-only codebase analysis for multi-model consensus.",
     model: "glm-5",
-    tools: ["@builtin"],
-    allowedTools: ["@builtin", "fs_*"],
+    tools: ["read", "grep", "glob"],
+    allowedTools: ["read", "grep", "glob"],
     useLegacyMcpJson: false,
     toolsSettings: {
-      fs_write: { deniedPaths: ["**"], fallbackAction: "deny" },
-      execute_bash: { denyByDefault: true }
+      read: { allowedPaths: ["./", $home_kiro] },
+      grep: { allowedPaths: ["./"] },
+      glob: { allowedPaths: ["./"] }
     },
     resources: [
       "file://.kiro/steering/*.md"
@@ -477,16 +569,18 @@ inject_locale_hook "$AGENTS_DIR/councillor-b.json"
 # --- councillor-c ---
 jq -n \
   --arg prompt "file://${HOME_DIR}/.kiro/agents/councillor-c.md" \
+  --arg home_kiro "${HOME_DIR}/.kiro" \
   '{
     name: "councillor-c",
     description: "Council advisor. Read-only codebase analysis for multi-model consensus.",
     model: "claude-opus-4.5",
-    tools: ["@builtin"],
-    allowedTools: ["@builtin", "fs_*"],
+    tools: ["read", "grep", "glob"],
+    allowedTools: ["read", "grep", "glob"],
     useLegacyMcpJson: false,
     toolsSettings: {
-      fs_write: { deniedPaths: ["**"], fallbackAction: "deny" },
-      execute_bash: { denyByDefault: true }
+      read: { allowedPaths: ["./", $home_kiro] },
+      grep: { allowedPaths: ["./"] },
+      glob: { allowedPaths: ["./"] }
     },
     resources: [
       "file://.kiro/steering/*.md"
@@ -499,16 +593,18 @@ inject_locale_hook "$AGENTS_DIR/councillor-c.json"
 # --- council-master ---
 jq -n \
   --arg prompt "file://${HOME_DIR}/.kiro/agents/council-master.md" \
+  --arg home_kiro "${HOME_DIR}/.kiro" \
   '{
     name: "council-master",
     description: "Council synthesis engine. Reviews councillor responses and produces the final answer.",
     model: "claude-opus-4.6",
-    tools: ["@builtin"],
-    allowedTools: ["@builtin", "fs_*"],
+    tools: ["read", "grep", "glob"],
+    allowedTools: ["read", "grep", "glob"],
     useLegacyMcpJson: false,
     toolsSettings: {
-      fs_write: { deniedPaths: ["**"], fallbackAction: "deny" },
-      execute_bash: { denyByDefault: true }
+      read: { allowedPaths: ["./", $home_kiro] },
+      grep: { allowedPaths: ["./"] },
+      glob: { allowedPaths: ["./"] }
     },
     prompt: $prompt
   }' > "$AGENTS_DIR/council-master.json"
@@ -535,13 +631,13 @@ jq -n \
 echo ""
 echo "Kiro configuration complete:"
 echo "  Agents:"
-for f in developer reviewer designer explorer simplifier tester debugger planner code_supervisor librarian researcher councillor-a councillor-b councillor-c council-master; do
+for f in developer reviewer designer explorer simplifier tester debugger planner code_supervisor researcher councillor-a councillor-b councillor-c council-master; do
   echo "    ✓ $AGENTS_DIR/$f.json"
 done
 echo "  Settings:"
 echo "    ✓ $KIRO_DIR/settings/mcp.json"
 echo "  Hooks (managed separately in hooks/):"
-for f in phase-reminder caveman locale rtk-rewrite rtk-rules cmux-notify validate-write; do
+for f in phase-reminder caveman locale rtk-rewrite rtk-rules cmux-notify validate-write-plan-folder validate-developer-plan validate-read-allowed-paths; do
   if [ -f "$KIRO_DIR/hooks/$f.sh" ]; then
     echo "    ✓ $KIRO_DIR/hooks/$f.sh"
   else

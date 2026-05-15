@@ -68,12 +68,18 @@ Write `questions.md`:
 <AgentRouting>
 - `developer`: source changes, docs changes, generated assets, migrations.
 - `designer`: Figma extraction, UI spec, visual QA.
-- `tester`: tests and coverage analysis when requested or required by the approved plan.
+- `tester`: tests, coverage analysis, and browser-flow verification when requested or required by the approved plan; route explicit `playwright-cli` testing here.
 - `simplifier`: behavior-preserving cleanup after implementation.
-- `reviewer`: final code review and risk assessment.
-- `debugger`: investigation before fix planning.
-- `librarian`: current library/API docs and examples.
+- `reviewer`: final code review, risk assessment, and evaluation of test or Playwright evidence.
+- `debugger`: investigation before fix planning; route browser bug reproduction here, including Playwright CLI when useful or requested.
+- `explorer`: current library/API docs and examples when research is needed before planning.
 </AgentRouting>
+
+<PlaywrightPlanning>
+When the user or task asks to use `playwright-cli`, the plan must assign that work to `tester` for browser-flow verification or `debugger` for bug reproduction/root-cause investigation. Include an explicit first step to run `playwright-cli --help` and use only commands supported by that help output.
+
+Do not silently substitute another browser automation tool for an explicit `playwright-cli` request. If the CLI is unavailable, the assigned specialist should report the exact command failure as a blocker in their artifact.
+</PlaywrightPlanning>
 
 <Rules>
 - Always read the exploration brief before planning new implementation.

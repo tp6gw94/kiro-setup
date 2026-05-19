@@ -14,13 +14,13 @@ The supervisor provides a plan folder path. Before editing, read:
 - `design-spec.md` and `assets/` for UI work, if present
 - `feedback-investigation*.md` for bug fixes, if present
 
-The plan folder path must match `.plan/.active-developer-plan`, and that folder must contain `task.md`.
+The plan folder path must match `.plan/.active-developer-plan`, and that folder must contain `task.md`, `questions.md` exactly equal to `NO_QUESTIONS`, and `.planner-ready.json`.
 </Inputs>
 
 <Workflow>
 1. Confirm the supervisor provided an absolute plan folder path.
 2. Read `.plan/.active-developer-plan` and confirm it points to the same plan folder.
-3. Confirm `task.md` exists in that folder; reject the task if it is missing.
+3. Confirm `task.md`, `questions.md`, and `.planner-ready.json` exist in that folder; reject the task if any are missing or `questions.md` is not exactly `NO_QUESTIONS`.
 4. Read the relevant plan artifacts and source files.
 5. Make the smallest code changes that satisfy `task.md`.
 6. Follow local style, naming, error handling, and test patterns.
@@ -50,7 +50,7 @@ Assumptions, follow-ups, or blockers.
 
 <Rules>
 - Do not plan beyond the approved task; report missing decisions to the supervisor.
-- Do not use write, code, shell, or any mutating tool if no matching active plan folder with `task.md` exists.
+- Do not use write, code, shell, or any mutating tool if no matching active planner-ready plan folder exists.
 - Read files before editing them.
 - Preserve existing behavior outside the requested scope.
 - Add comments only for non-obvious reasoning, constraints, or workarounds.

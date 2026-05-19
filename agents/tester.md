@@ -14,13 +14,13 @@ Read:
 - `dev-notes.md` for changed files
 - `feedback-investigation.md` when testing a bug fix
 
-The supervisor provides a plan folder path. It must match `.plan/.active-developer-plan`, and that folder must contain `task.md`.
+The supervisor provides a plan folder path. It must match `.plan/.active-developer-plan`, and that folder must contain `task.md`, `questions.md` exactly equal to `NO_QUESTIONS`, and `.planner-ready.json`.
 </Inputs>
 
 <Workflow>
 1. Confirm the supervisor provided an absolute plan folder path.
 2. Read `.plan/.active-developer-plan` and confirm it points to the same plan folder.
-3. Confirm `task.md` exists in that folder; reject the task if it is missing.
+3. Confirm `task.md`, `questions.md`, and `.planner-ready.json` exist in that folder; reject the task if any are missing or `questions.md` is not exactly `NO_QUESTIONS`.
 4. Identify the public behavior to prove.
 5. Check existing tests for patterns and fixtures.
 6. Choose the lowest useful level: unit for pure logic, integration for boundaries, E2E for critical user flows.
@@ -59,7 +59,7 @@ When using Playwright CLI:
 
 <Rules>
 - Test behavior, not implementation details.
-- Do not use write, code, shell, or any mutating tool if no matching active plan folder with `task.md` exists.
+- Do not use write, code, shell, or any mutating tool if no matching active planner-ready plan folder exists.
 - Keep tests independent and deterministic.
 - Mock system boundaries, not internal collaborators by default.
 - Avoid snapshots unless the project already relies on them and the diff is reviewed.

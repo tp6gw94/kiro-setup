@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-HOOK="$ROOT/hooks/validate-read-allowed-paths.sh"
+HOOK="$ROOT/hooks/code_supervisor/validate-read-allowed-paths.js"
 
 tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT
@@ -14,7 +14,7 @@ run_hook() {
   local payload="$1"
   (
     cd "$tmpdir"
-    KIRO_HOME="$kiro_home" printf '%s\n' "$payload" | KIRO_HOME="$kiro_home" bash "$HOOK"
+    KIRO_HOME="$kiro_home" printf '%s\n' "$payload" | KIRO_HOME="$kiro_home" "$HOOK"
   )
 }
 

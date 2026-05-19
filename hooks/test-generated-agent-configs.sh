@@ -3,10 +3,13 @@ set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 AGENTS_DIR="$HOME/.kiro/agents"
-PLAN_HOOK="$HOME/.kiro/hooks/validate-write-plan-folder.sh"
-ACTIVE_PLAN_HOOK="$HOME/.kiro/hooks/validate-developer-plan.sh"
-READ_HOOK="$HOME/.kiro/hooks/validate-read-allowed-paths.sh"
-PHASE_HOOK="$HOME/.kiro/hooks/phase-reminder.sh"
+ARTIFACT_PLAN_HOOK="$HOME/.kiro/hooks/plan_writers/validate-artifact-plan-write.js"
+PLANNER_PLAN_HOOK="$HOME/.kiro/hooks/planner/validate-planner-plan-write.js"
+SUPERVISOR_PLAN_HOOK="$HOME/.kiro/hooks/code_supervisor/validate-supervisor-plan-write.js"
+ACTIVE_PLAN_HOOK="$HOME/.kiro/hooks/source_writing/validate-developer-plan.js"
+READ_HOOK="$HOME/.kiro/hooks/code_supervisor/validate-read-allowed-paths.js"
+PHASE_HOOK="$HOME/.kiro/hooks/code_supervisor/phase-reminder.sh"
+RTK_HOOK="$HOME/.kiro/hooks/shell/rtk-rewrite.js"
 
 cd "$ROOT"
 EXA_API_KEY=dummy bash "$ROOT/generate-configs.sh" >/tmp/generated-agent-configs.out
@@ -38,10 +41,10 @@ require_plan_only_writer() {
   local name="$1"
   local file="$AGENTS_DIR/$name.json"
 
-  if ! jq -e --arg hook "$PLAN_HOOK" \
+  if ! jq -e --arg hook "$ARTIFACT_PLAN_HOOK" \
     '.toolsSettings.write.allowedPaths == ["./.plan"] and any(.hooks.preToolUse[]?; .command == $hook and .matcher == "write")' \
     "$file" >/dev/null; then
-    echo "$name must write only .plan and use the plan-folder write hook" >&2
+    echo "$name must write only .plan and use the artifact plan hook" >&2
     echo "File: $file" >&2
     jq '{name, tools, allowedTools, toolsSettings, hooks}' "$file" >&2
     exit 1
@@ -62,12 +65,42 @@ require_active_plan_writer() {
   fi
 }
 
-for name in code_supervisor reviewer designer explorer debugger planner; do
+for name in reviewer designer explorer debugger; do
   require_plan_only_writer "$name"
 done
 
+if ! jq -e --arg hook "$PLANNER_PLAN_HOOK" \
+  '.toolsSettings.write.allowedPaths == ["./.plan"] and any(.hooks.preToolUse[]?; .command == $hook and .matcher == "write")' \
+  "$AGENTS_DIR/planner.json" >/dev/null; then
+  echo "planner must write .plan only through the planner plan hook" >&2
+  jq '{name, tools, allowedTools, toolsSettings, hooks}' "$AGENTS_DIR/planner.json" >&2
+  exit 1
+fi
+
+if ! jq -e --arg hook "$SUPERVISOR_PLAN_HOOK" \
+  '.toolsSettings.write.allowedPaths == ["./.plan"] and any(.hooks.preToolUse[]?; .command == $hook and .matcher == "write")' \
+  "$AGENTS_DIR/code_supervisor.json" >/dev/null; then
+  echo "code_supervisor must write .plan only through the supervisor plan hook" >&2
+  jq '{name, tools, allowedTools, toolsSettings, hooks}' "$AGENTS_DIR/code_supervisor.json" >&2
+  exit 1
+fi
+
+if ! jq -e \
+  '(.tools | index("shell") | not) and (.allowedTools | index("shell") | not) and (.toolsSettings | has("shell") | not)' \
+  "$AGENTS_DIR/code_supervisor.json" >/dev/null; then
+  echo "code_supervisor must not expose shell; verification belongs to tester/reviewer artifacts" >&2
+  jq '{name, tools, allowedTools, toolsSettings, hooks}' "$AGENTS_DIR/code_supervisor.json" >&2
+  exit 1
+fi
+
 for name in developer tester simplifier; do
   require_active_plan_writer "$name"
+done
+
+for name in developer reviewer designer explorer simplifier tester debugger; do
+  require_jq "$AGENTS_DIR/$name.json" \
+    'any(.hooks.preToolUse[]?; .command == "'"$RTK_HOOK"'" and .matcher == "shell")' \
+    "$name must use the Node.js RTK rewrite hook"
 done
 
 require_no_file "$AGENTS_DIR/librarian.json" "librarian.json should not be generated after merging librarian into explorer"

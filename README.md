@@ -1,6 +1,6 @@
 # Kiro CLI Configuration
 
-Multi-agent AI coding orchestrator powered by Kiro CLI. Features 14 specialized agents, 9 custom hooks, 24 skills, and a code-gen config pipeline.
+Multi-agent AI coding orchestrator powered by Kiro CLI. Features 14 specialized agents, 11 custom hooks, 24 skills, and a code-gen config pipeline.
 
 ## Architecture Overview
 
@@ -83,26 +83,28 @@ kiro-cli chat   # defaults to code_supervisor agent
 
 ## Hooks
 
-9 hooks total — 4 base hooks for all agents, 2 supervisor-only hooks, 1 supervisor read gate, 1 `.plan` write gate, and 1 active-plan gate for source-writing agents.
+11 hooks total — root `hooks/` is reserved for all-agent hooks; agent-specific and group-specific hooks live under scoped subdirectories.
 
 | Hook | Trigger | Scope | Description |
 |------|---------|-------|-------------|
-| `rtk-rewrite.sh` | `preToolUse` (shell) | Most agents | Intercepts shell commands, rewrites via RTK for token efficiency. Blocks original and suggests rtk-prefixed version. |
-| `rtk-rules.sh` | `agentSpawn` | Most agents | Injects RTK usage instructions into agent context at startup |
+| `shell/rtk-rewrite.js` | `preToolUse` (shell) | Most agents | Intercepts shell commands, rewrites via RTK for token efficiency. Blocks original and suggests rtk-prefixed version. |
+| `shell/rtk-rules.sh` | `agentSpawn` | Most agents | Injects RTK usage instructions into agent context at startup |
 | `caveman.sh` | `agentSpawn` | All agents | Injects caveman speech style instruction |
 | `locale.sh` | `agentSpawn` | All agents | Injects Traditional Chinese (繁體中文) locale instruction |
-| `phase-reminder.sh` | `userPromptSubmit` | code_supervisor | Injects a hard workflow reminder for plan checks, delegation, execution, and verification on every prompt |
-| `cmux-notify.sh` | `stop` | code_supervisor | Desktop notification via cmux when response completes |
-| `validate-read-allowed-paths.sh` | `preToolUse` | code_supervisor | Blocks read tools outside `.plan/`, Kiro home, and `/var/folders` |
-| `validate-write-plan-folder.sh` | `preToolUse` | `.plan` artifact writers | Blocks write tools outside `.plan/` |
-| `validate-developer-plan.sh` | `preToolUse` | source-writing agents | Blocks write/code/shell tools unless `.plan/.active-developer-plan` points to a task folder containing `task.md` |
+| `code_supervisor/phase-reminder.sh` | `userPromptSubmit` | code_supervisor | Injects a hard workflow reminder for plan checks, delegation, execution, and artifact-based verification on every prompt |
+| `code_supervisor/cmux-notify.sh` | `stop` | code_supervisor | Desktop notification via cmux when response completes |
+| `code_supervisor/validate-read-allowed-paths.js` | `preToolUse` | code_supervisor | Blocks read tools outside `.plan/`, Kiro home, and `/var/folders` |
+| `code_supervisor/validate-supervisor-plan-write.js` | `preToolUse` | code_supervisor | Blocks supervisor writes to planner-owned files and only activates planner-ready plans |
+| `planner/validate-planner-plan-write.js` | `preToolUse` | planner | Allows planner to write formal plan files inside `.plan/` |
+| `plan_writers/validate-artifact-plan-write.js` | `preToolUse` | `.plan` artifact writers | Blocks writes outside `.plan/` and protects planner-owned files |
+| `source_writing/validate-developer-plan.js` | `preToolUse` | source-writing agents | Blocks write/code/shell tools unless `.active-developer-plan` points to a planner-ready task folder |
 
 ## RTK Integration
 
 RTK (Rust Token Killer) is a CLI proxy that optimizes shell command output for token efficiency. Two-layer protection ensures agents always use it:
 
-1. **`agentSpawn` hook** (`rtk-rules.sh`) — tells agents to use `rtk` prefix for shell commands at startup
-2. **`preToolUse` hook** (`rtk-rewrite.sh`) — intercepts and rewrites commands if agents forget
+1. **`agentSpawn` hook** (`shell/rtk-rules.sh`) — tells agents to use `rtk` prefix for shell commands at startup
+2. **`preToolUse` hook** (`shell/rtk-rewrite.js`) — intercepts and rewrites commands if agents forget
 
 > **Important:** `agentSpawn` hooks do NOT fire for subagent sessions, but `preToolUse` hooks DO. This is why both layers are needed.
 
@@ -141,7 +143,7 @@ sudo ln -sf "/Applications/cmux.app/Contents/Resources/bin/cmux" /usr/local/bin/
 
 ### How it's used here
 
-The `cmux-notify.sh` hook (triggered on `stop` for `code_supervisor`) sends a desktop notification via `cmux notify` whenever the orchestrator finishes responding. The cmux sidebar tab lights up with a blue notification ring showing the project name and a preview of the response — useful when managing multiple Kiro CLI sessions across workspaces.
+The `code_supervisor/cmux-notify.sh` hook (triggered on `stop` for `code_supervisor`) sends a desktop notification via `cmux notify` whenever the orchestrator finishes responding. The cmux sidebar tab lights up with a blue notification ring showing the project name and a preview of the response — useful when managing multiple Kiro CLI sessions across workspaces.
 
 The hook includes a guard clause (`cmux ping || exit 0`) so it silently does nothing if cmux is not installed or not running.
 
@@ -162,12 +164,13 @@ The hook includes a guard clause (`cmux ping || exit 0`) so it silently does not
 ```
   .md prompt files ──┐
                      ├──▶ generate-configs.sh ──▶ .json agent configs
-  .sh hook scripts ──┘         (runtime)           (gitignored)
+  hook scripts ─────┘          (runtime)           (gitignored)
 ```
 
-- `.md` prompt files and `.sh` hook scripts are **git-tracked**
+- `.md` prompt files and hook scripts are **git-tracked**
 - `.json` agent configs are **generated at runtime** (gitignored)
-- Hook injection: 4 base hooks applied to all agents + 2 supervisor-only hooks + `.plan` and active-plan write gates
+- Hook injection: root hooks apply to all agents; scoped hook folders apply to code_supervisor, shell-capable agents, `.plan` writers, and source-writing agents.
+- `code_supervisor` has no shell tool; it verifies workflow completion by reading `.plan` artifacts and delegates missing build/test/lint/typecheck evidence to `tester` or `reviewer`.
 
 ## Plan Folder Protocol
 
@@ -178,6 +181,7 @@ The hook includes a guard clause (`cmux ping || exit 0`) so it silently does not
 | `exploration-brief.md` | Explorer's codebase analysis |
 | `task.md` | Full task requirements |
 | `questions.md` | Planner's clarifying questions |
+| `.planner-ready.json` | Planner readiness marker written only when `questions.md` is `NO_QUESTIONS` |
 | `answers.md` | User's answers to questions |
 | `dev-notes.md` | Developer's implementation notes |
 | `design-spec.md` | Designer's UI specification |
@@ -199,7 +203,7 @@ The hook includes a guard clause (`cmux ping || exit 0`) so it silently does not
 ## Key Design Patterns
 
 1. **Code-gen over config** — markdown prompts are the source of truth; JSON configs are generated
-2. **Hook injection** — behavior injected at runtime via shell hooks, not baked into prompts
+2. **Hook injection** — behavior injected at runtime via hook scripts, not baked into prompts
 3. **Separation of concerns** — each agent has a single responsibility
 4. **Plan folder protocol** — standardized file-based IPC between agents
 5. **Parallel wave execution** — supervisor dispatches independent tasks concurrently

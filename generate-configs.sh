@@ -8,9 +8,19 @@ HOME_DIR="$HOME"
 if [ -z "${EXA_API_KEY:-}" ]; then echo "ERROR: EXA_API_KEY environment variable is not set" >&2; exit 1; fi
 if ! command -v jq &>/dev/null; then echo "ERROR: jq is required but not found" >&2; exit 1; fi
 
-mkdir -p "$AGENTS_DIR" "$KIRO_DIR/settings" "$KIRO_DIR/hooks" "$KIRO_DIR/skills/cartography/scripts" "$KIRO_DIR/skills/council-session"
+mkdir -p \
+  "$AGENTS_DIR" \
+  "$KIRO_DIR/settings" \
+  "$KIRO_DIR/hooks" \
+  "$KIRO_DIR/hooks/code_supervisor" \
+  "$KIRO_DIR/hooks/planner" \
+  "$KIRO_DIR/hooks/plan_writers" \
+  "$KIRO_DIR/hooks/source_writing" \
+  "$KIRO_DIR/hooks/shell" \
+  "$KIRO_DIR/skills/cartography/scripts" \
+  "$KIRO_DIR/skills/council-session"
 
-RTK_HOOK="$KIRO_DIR/hooks/rtk-rewrite.sh"
+RTK_HOOK="$KIRO_DIR/hooks/shell/rtk-rewrite.js"
 # Post-process an agent JSON to add the RTK preToolUse hook (idempotent via jq merge)
 inject_rtk_hook() {
   local agent_file="$1"
@@ -19,7 +29,7 @@ inject_rtk_hook() {
     "$agent_file" > "${agent_file}.tmp" && mv "${agent_file}.tmp" "$agent_file"
 }
 
-RTK_SPAWN_HOOK="$KIRO_DIR/hooks/rtk-rules.sh"
+RTK_SPAWN_HOOK="$KIRO_DIR/hooks/shell/rtk-rules.sh"
 inject_rtk_spawn_hook() {
   local agent_file="$1"
   jq --arg hook "$RTK_SPAWN_HOOK" \
@@ -27,7 +37,7 @@ inject_rtk_spawn_hook() {
     "$agent_file" > "${agent_file}.tmp" && mv "${agent_file}.tmp" "$agent_file"
 }
 
-DEVELOPER_PLAN_HOOK="$KIRO_DIR/hooks/validate-developer-plan.sh"
+DEVELOPER_PLAN_HOOK="$KIRO_DIR/hooks/source_writing/validate-developer-plan.js"
 inject_developer_plan_hook() {
   local agent_file="$1"
   jq --arg hook "$DEVELOPER_PLAN_HOOK" \
@@ -39,10 +49,26 @@ inject_developer_plan_hook() {
     "$agent_file" > "${agent_file}.tmp" && mv "${agent_file}.tmp" "$agent_file"
 }
 
-PLAN_FOLDER_WRITE_HOOK="$KIRO_DIR/hooks/validate-write-plan-folder.sh"
+ARTIFACT_PLAN_WRITE_HOOK="$KIRO_DIR/hooks/plan_writers/validate-artifact-plan-write.js"
 inject_plan_folder_write_hook() {
   local agent_file="$1"
-  jq --arg hook "$PLAN_FOLDER_WRITE_HOOK" \
+  jq --arg hook "$ARTIFACT_PLAN_WRITE_HOOK" \
+    '.hooks.preToolUse = (.hooks.preToolUse // []) + [{ command: $hook, matcher: "write" }]' \
+    "$agent_file" > "${agent_file}.tmp" && mv "${agent_file}.tmp" "$agent_file"
+}
+
+PLANNER_PLAN_WRITE_HOOK="$KIRO_DIR/hooks/planner/validate-planner-plan-write.js"
+inject_planner_plan_write_hook() {
+  local agent_file="$1"
+  jq --arg hook "$PLANNER_PLAN_WRITE_HOOK" \
+    '.hooks.preToolUse = (.hooks.preToolUse // []) + [{ command: $hook, matcher: "write" }]' \
+    "$agent_file" > "${agent_file}.tmp" && mv "${agent_file}.tmp" "$agent_file"
+}
+
+SUPERVISOR_PLAN_WRITE_HOOK="$KIRO_DIR/hooks/code_supervisor/validate-supervisor-plan-write.js"
+inject_supervisor_plan_write_hook() {
+  local agent_file="$1"
+  jq --arg hook "$SUPERVISOR_PLAN_WRITE_HOOK" \
     '.hooks.preToolUse = (.hooks.preToolUse // []) + [{ command: $hook, matcher: "write" }]' \
     "$agent_file" > "${agent_file}.tmp" && mv "${agent_file}.tmp" "$agent_file"
 }
@@ -414,7 +440,7 @@ jq -n \
     ],
     prompt: $prompt
   }' > "$AGENTS_DIR/planner.json"
-inject_plan_folder_write_hook "$AGENTS_DIR/planner.json"
+inject_planner_plan_write_hook "$AGENTS_DIR/planner.json"
 inject_caveman_hook "$AGENTS_DIR/planner.json"
 inject_locale_hook "$AGENTS_DIR/planner.json"
 
@@ -422,18 +448,18 @@ inject_locale_hook "$AGENTS_DIR/planner.json"
 jq -n \
   --arg prompt "file://${HOME_DIR}/.kiro/agents/code_supervisor.md" \
   --arg skills "skill://${HOME_DIR}/.kiro/skills/**/SKILL.md" \
-  --arg notify "${HOME_DIR}/.kiro/hooks/cmux-notify.sh" \
-  --arg phase_reminder "$KIRO_DIR/hooks/phase-reminder.sh" \
-  --arg validate_write "${HOME_DIR}/.kiro/hooks/validate-write-plan-folder.sh" \
-  --arg validate_read "${HOME_DIR}/.kiro/hooks/validate-read-allowed-paths.sh" \
+  --arg notify "${HOME_DIR}/.kiro/hooks/code_supervisor/cmux-notify.sh" \
+  --arg phase_reminder "$KIRO_DIR/hooks/code_supervisor/phase-reminder.sh" \
+  --arg validate_write "${HOME_DIR}/.kiro/hooks/code_supervisor/validate-supervisor-plan-write.js" \
+  --arg validate_read "${HOME_DIR}/.kiro/hooks/code_supervisor/validate-read-allowed-paths.js" \
   --arg home_kiro "${HOME_DIR}/.kiro" \
   '{
     name: "code_supervisor",
     prompt: $prompt,
     model: "claude-opus-4.6",
     description: "Coding Supervisor Agent that orchestrates and delegates tasks to specialized agents",
-    tools: ["shell", "read", "write", "use_subagent", "todo", "thinking", "introspect", "session", "@git"],
-    allowedTools: ["use_subagent", "todo", "thinking", "introspect", "session", "@git"],
+    tools: ["read", "write", "subagent", "todo", "thinking", "introspect", "session", "@git"],
+    allowedTools: ["subagent", "todo", "thinking", "introspect", "session", "@git"],
     useLegacyMcpJson: false,
     toolsSettings: {
       write: {
@@ -441,10 +467,6 @@ jq -n \
       },
       read: {
         allowedPaths: ["./.plan", "/var/folders", $home_kiro]
-      },
-      shell: {
-        allowedCommands: ["cmux .*", "git .*"],
-        denyByDefault: true
       },
       subagent: {
         availableAgents: ["planner", "designer", "developer", "explorer", "reviewer", "simplifier", "tester", "debugger", "councillor-a", "councillor-b", "councillor-c", "council-master"],
@@ -469,8 +491,7 @@ jq -n \
     hooks: {
       stop: [
         {
-          command: $notify,
-          description: "Notify via cmux when response completes"
+          command: $notify
         }
       ],
       userPromptSubmit: [
@@ -637,11 +658,11 @@ done
 echo "  Settings:"
 echo "    ✓ $KIRO_DIR/settings/mcp.json"
 echo "  Hooks (managed separately in hooks/):"
-for f in phase-reminder caveman locale rtk-rewrite rtk-rules cmux-notify validate-write-plan-folder validate-developer-plan validate-read-allowed-paths; do
-  if [ -f "$KIRO_DIR/hooks/$f.sh" ]; then
-    echo "    ✓ $KIRO_DIR/hooks/$f.sh"
+for f in caveman.sh locale.sh code_supervisor/phase-reminder.sh code_supervisor/cmux-notify.sh code_supervisor/validate-read-allowed-paths.js code_supervisor/validate-supervisor-plan-write.js planner/validate-planner-plan-write.js plan_writers/validate-artifact-plan-write.js source_writing/validate-developer-plan.js shell/rtk-rewrite.js shell/rtk-rules.sh; do
+  if [ -f "$KIRO_DIR/hooks/$f" ]; then
+    echo "    ✓ $KIRO_DIR/hooks/$f"
   else
-    echo "    ⚠ $KIRO_DIR/hooks/$f.sh not found"
+    echo "    ⚠ $KIRO_DIR/hooks/$f not found"
   fi
 done
 echo ""

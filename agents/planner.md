@@ -23,6 +23,7 @@ The supervisor provides the original request, the plan folder path, and relevant
 5. Write `task.md` with enough detail that a specialist can execute without making product or architecture decisions.
 6. Grill the plan for missing decisions. Write `questions.md` with only questions that cannot be answered from artifacts.
 7. If no questions remain, write exactly `NO_QUESTIONS` to `questions.md`.
+8. If and only if `questions.md` is exactly `NO_QUESTIONS`, write `.planner-ready.json` in the same plan folder.
 </Workflow>
 
 <Output>
@@ -65,6 +66,16 @@ Write `questions.md`:
 ```
 </Output>
 
+When the plan is ready for supervisor approval, write `.planner-ready.json`:
+
+```json
+{
+  "ready": true,
+  "owner": "planner",
+  "requires_user_approval": true
+}
+```
+
 <AgentRouting>
 - `developer`: source changes, docs changes, generated assets, migrations.
 - `designer`: Figma extraction, UI spec, visual QA.
@@ -88,4 +99,5 @@ Do not silently substitute another browser automation tool for an explicit `play
 - Do not include work that is merely nice to have.
 - Do not write source code.
 - Do not dispatch agents.
+- Do not write `.planner-ready.json` unless `questions.md` is exactly `NO_QUESTIONS`.
 </Rules>

@@ -5,13 +5,14 @@ ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 AGENTS_DIR="$HOME/.kiro/agents"
 ARTIFACT_PLAN_HOOK="$HOME/.kiro/hooks/plan_writers/validate-artifact-plan-write.js"
 PLANNER_PLAN_HOOK="$HOME/.kiro/hooks/planner/validate-planner-plan-write.js"
+PLANNER_OPEN_TASK_MARKDOWN_HOOK="$HOME/.kiro/hooks/planner/open-task-markdown.js"
 SUPERVISOR_PLAN_HOOK="$HOME/.kiro/hooks/code_supervisor/validate-supervisor-plan-write.js"
 ACTIVE_PLAN_HOOK="$HOME/.kiro/hooks/source_writing/validate-developer-plan.js"
 READ_HOOK="$HOME/.kiro/hooks/code_supervisor/validate-read-allowed-paths.js"
 PHASE_HOOK="$HOME/.kiro/hooks/code_supervisor/phase-reminder.sh"
 RTK_HOOK="$HOME/.kiro/hooks/shell/rtk-rewrite.js"
-AGENTS_SKILLS_URI="skill://$HOME/.agents/skills/**/SKILL.md"
-AGENTS_SKILLS_DIR="$HOME/.agents/skills"
+DISALLOWED_AGENTS_SKILLS_URI="skill://$HOME/.agents/skills/**/SKILL.md"
+DISALLOWED_AGENTS_SKILLS_DIR="$HOME/.agents/skills"
 PROMPT_DIR="$ROOT/agents"
 
 cd "$ROOT"
@@ -105,6 +106,14 @@ if ! jq -e --arg hook "$PLANNER_PLAN_HOOK" \
   exit 1
 fi
 
+if ! jq -e --arg hook "$PLANNER_OPEN_TASK_MARKDOWN_HOOK" \
+  'any(.hooks.postToolUse[]?; .command == $hook and .matcher == "write")' \
+  "$AGENTS_DIR/planner.json" >/dev/null; then
+  echo "planner must open task.md with cmux markdown after successful writes when cmux is available" >&2
+  jq '{name, tools, allowedTools, toolsSettings, hooks}' "$AGENTS_DIR/planner.json" >&2
+  exit 1
+fi
+
 if ! jq -e --arg hook "$SUPERVISOR_PLAN_HOOK" \
   '.toolsSettings.write.allowedPaths == ["./.plan"] and any(.hooks.preToolUse[]?; .command == $hook and .matcher == "write")' \
   "$AGENTS_DIR/code_supervisor.json" >/dev/null; then
@@ -127,14 +136,14 @@ done
 
 for name in developer reviewer explorer simplifier tester debugger planner code_supervisor; do
   require_jq "$AGENTS_DIR/$name.json" \
-    'any(.resources[]?; . == "'"$AGENTS_SKILLS_URI"'")' \
-    "$name must include ~/.agents/skills as a skill resource"
+    'all(.resources[]?; . != "'"$DISALLOWED_AGENTS_SKILLS_URI"'")' \
+    "$name must not include ~/.agents/skills as a skill resource"
 done
 
 for name in developer reviewer simplifier tester debugger planner code_supervisor; do
   require_jq "$AGENTS_DIR/$name.json" \
-    'any(.toolsSettings.read.allowedPaths[]?; . == "'"$AGENTS_SKILLS_DIR"'")' \
-    "$name must include ~/.agents/skills as a readable skill root"
+    'all(.toolsSettings.read.allowedPaths[]?; . != "'"$DISALLOWED_AGENTS_SKILLS_DIR"'")' \
+    "$name must not include ~/.agents/skills as a readable skill root"
 done
 
 for name in developer reviewer designer explorer simplifier tester debugger; do
@@ -168,8 +177,8 @@ if ! jq -e --arg hook "$PHASE_HOOK" \
   exit 1
 fi
 
-if ! jq -e --arg hook "$READ_HOOK" --arg home "$HOME/.kiro" --arg agents_skills "$AGENTS_SKILLS_DIR" \
-  '.toolsSettings.read.allowedPaths == ["./.plan", "/var/folders", $home, $agents_skills] and any(.hooks.preToolUse[]?; .command == $hook and .matcher == "read")' \
+if ! jq -e --arg hook "$READ_HOOK" --arg home "$HOME/.kiro" \
+  '.toolsSettings.read.allowedPaths == ["./.plan", "/var/folders", $home] and any(.hooks.preToolUse[]?; .command == $hook and .matcher == "read")' \
   "$AGENTS_DIR/code_supervisor.json" >/dev/null; then
   echo "code_supervisor must restrict read roots and use the read-path hook" >&2
   jq '{name, toolsSettings, hooks}' "$AGENTS_DIR/code_supervisor.json" >&2

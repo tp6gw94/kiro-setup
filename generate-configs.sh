@@ -5,8 +5,6 @@ KIRO_DIR="$HOME/.kiro"
 AGENTS_DIR="$KIRO_DIR/agents"
 HOME_DIR="$HOME"
 KIRO_SKILLS_URI="skill://${HOME_DIR}/.kiro/skills/**/SKILL.md"
-AGENTS_SKILLS_DIR="${HOME_DIR}/.agents/skills"
-AGENTS_SKILLS_URI="skill://${AGENTS_SKILLS_DIR}/**/SKILL.md"
 
 if [ -z "${EXA_API_KEY:-}" ]; then echo "ERROR: EXA_API_KEY environment variable is not set" >&2; exit 1; fi
 if ! command -v jq &>/dev/null; then echo "ERROR: jq is required but not found" >&2; exit 1; fi
@@ -68,6 +66,14 @@ inject_planner_plan_write_hook() {
     "$agent_file" > "${agent_file}.tmp" && mv "${agent_file}.tmp" "$agent_file"
 }
 
+PLANNER_OPEN_TASK_MARKDOWN_HOOK="$KIRO_DIR/hooks/planner/open-task-markdown.js"
+inject_planner_task_markdown_hook() {
+  local agent_file="$1"
+  jq --arg hook "$PLANNER_OPEN_TASK_MARKDOWN_HOOK" \
+    '.hooks.postToolUse = (.hooks.postToolUse // []) + [{ command: $hook, matcher: "write" }]' \
+    "$agent_file" > "${agent_file}.tmp" && mv "${agent_file}.tmp" "$agent_file"
+}
+
 SUPERVISOR_PLAN_WRITE_HOOK="$KIRO_DIR/hooks/code_supervisor/validate-supervisor-plan-write.js"
 inject_supervisor_plan_write_hook() {
   local agent_file="$1"
@@ -97,8 +103,6 @@ rm -f "$AGENTS_DIR/librarian.json"
 jq -n \
   --arg prompt "file://${HOME_DIR}/.kiro/agents/developer.md" \
   --arg skills "$KIRO_SKILLS_URI" \
-  --arg agents_skills "$AGENTS_SKILLS_URI" \
-  --arg agents_skills_dir "$AGENTS_SKILLS_DIR" \
   --arg home_kiro "${HOME_DIR}/.kiro" \
   '{
     name: "developer",
@@ -112,7 +116,7 @@ jq -n \
         allowedPaths: ["./"]
       },
       read: {
-        allowedPaths: ["./", $home_kiro, $agents_skills_dir]
+        allowedPaths: ["./", $home_kiro]
       },
       grep: {
         allowedPaths: ["./"]
@@ -139,7 +143,6 @@ jq -n \
       "file://README.md",
       "file://package.json",
       "skill://.kiro/skills/*/SKILL.md",
-      $agents_skills,
       $skills
     ],
     prompt: $prompt
@@ -154,8 +157,6 @@ inject_locale_hook "$AGENTS_DIR/developer.json"
 jq -n \
   --arg prompt "file://${HOME_DIR}/.kiro/agents/reviewer.md" \
   --arg skills "$KIRO_SKILLS_URI" \
-  --arg agents_skills "$AGENTS_SKILLS_URI" \
-  --arg agents_skills_dir "$AGENTS_SKILLS_DIR" \
   --arg home_kiro "${HOME_DIR}/.kiro" \
   '{
     name: "reviewer",
@@ -167,7 +168,7 @@ jq -n \
         allowedPaths: ["./"]
       },
       read: {
-        allowedPaths: ["./", $home_kiro, $agents_skills_dir]
+        allowedPaths: ["./", $home_kiro]
       },
       grep: {
         allowedPaths: ["./"]
@@ -195,7 +196,6 @@ jq -n \
       "skill://.kiro/skills/*/SKILL.md",
       "file:///./CLAUDE.md",
       "file://.kiro/steering/*.md",
-      $agents_skills,
       $skills
     ],
     prompt: $prompt
@@ -245,7 +245,6 @@ inject_locale_hook "$AGENTS_DIR/designer.json"
 jq -n \
   --arg prompt "file://${HOME_DIR}/.kiro/agents/explorer.md" \
   --arg skills "$KIRO_SKILLS_URI" \
-  --arg agents_skills "$AGENTS_SKILLS_URI" \
   --arg exa_key "${EXA_API_KEY}" \
   '{
     name: "explorer",
@@ -261,7 +260,6 @@ jq -n \
     },
     resources: [
       $skills,
-      $agents_skills,
       "skill://.kiro/skills/*/SKILL.md",
       "file://.kiro/steering/*.md"
     ],
@@ -292,8 +290,6 @@ inject_locale_hook "$AGENTS_DIR/explorer.json"
 jq -n \
   --arg prompt "file://${HOME_DIR}/.kiro/agents/simplifier.md" \
   --arg skills "$KIRO_SKILLS_URI" \
-  --arg agents_skills "$AGENTS_SKILLS_URI" \
-  --arg agents_skills_dir "$AGENTS_SKILLS_DIR" \
   --arg home_kiro "${HOME_DIR}/.kiro" \
   '{
     name: "simplifier",
@@ -307,7 +303,7 @@ jq -n \
         allowedPaths: ["./"]
       },
       read: {
-        allowedPaths: ["./", $home_kiro, $agents_skills_dir]
+        allowedPaths: ["./", $home_kiro]
       },
       grep: {
         allowedPaths: ["./"]
@@ -318,7 +314,6 @@ jq -n \
     },
     resources: [
       $skills,
-      $agents_skills,
       "skill://.kiro/skills/*/SKILL.md",
       "file://.kiro/steering/*.md"
     ],
@@ -344,8 +339,6 @@ inject_locale_hook "$AGENTS_DIR/simplifier.json"
 jq -n \
   --arg prompt "file://${HOME_DIR}/.kiro/agents/tester.md" \
   --arg skills "$KIRO_SKILLS_URI" \
-  --arg agents_skills "$AGENTS_SKILLS_URI" \
-  --arg agents_skills_dir "$AGENTS_SKILLS_DIR" \
   --arg home_kiro "${HOME_DIR}/.kiro" \
   '{
     name: "tester",
@@ -361,7 +354,7 @@ jq -n \
         allowedPaths: ["./"]
       },
       read: {
-        allowedPaths: ["./", $home_kiro, $agents_skills_dir]
+        allowedPaths: ["./", $home_kiro]
       },
       write: {
         allowedPaths: ["./"]
@@ -370,7 +363,6 @@ jq -n \
     useLegacyMcpJson: false,
     resources: [
       $skills,
-      $agents_skills,
       "file://.kiro/steering/*.md",
       "file://README.md",
       "skill://.kiro/skills/*/SKILL.md"
@@ -387,8 +379,6 @@ inject_locale_hook "$AGENTS_DIR/tester.json"
 jq -n \
   --arg prompt "file://${HOME_DIR}/.kiro/agents/debugger.md" \
   --arg skills "$KIRO_SKILLS_URI" \
-  --arg agents_skills "$AGENTS_SKILLS_URI" \
-  --arg agents_skills_dir "$AGENTS_SKILLS_DIR" \
   --arg home_kiro "${HOME_DIR}/.kiro" \
   '{
     name: "debugger",
@@ -404,7 +394,7 @@ jq -n \
         allowedPaths: ["./"]
       },
       read: {
-        allowedPaths: ["./", $home_kiro, $agents_skills_dir]
+        allowedPaths: ["./", $home_kiro]
       },
       write: {
         allowedPaths: ["./.plan"]
@@ -413,7 +403,6 @@ jq -n \
     useLegacyMcpJson: false,
     resources: [
       $skills,
-      $agents_skills,
       "file://.kiro/steering/*.md"
     ],
     prompt: $prompt
@@ -428,8 +417,6 @@ inject_locale_hook "$AGENTS_DIR/debugger.json"
 jq -n \
   --arg prompt "file://${HOME_DIR}/.kiro/agents/planner.md" \
   --arg skills "$KIRO_SKILLS_URI" \
-  --arg agents_skills "$AGENTS_SKILLS_URI" \
-  --arg agents_skills_dir "$AGENTS_SKILLS_DIR" \
   --arg grill "skill://${HOME_DIR}/.kiro/skills/grill-me/SKILL.md" \
   --arg home_kiro "${HOME_DIR}/.kiro" \
   '{
@@ -448,7 +435,7 @@ jq -n \
         allowedPaths: ["./"]
       },
       read: {
-        allowedPaths: ["./", $home_kiro, $agents_skills_dir]
+        allowedPaths: ["./", $home_kiro]
       },
       write: {
         allowedPaths: ["./.plan"]
@@ -457,13 +444,13 @@ jq -n \
     resources: [
       "skill://.kiro/skills/*/SKILL.md",
       $skills,
-      $agents_skills,
       $grill,
       "file://.kiro/steering/*.md"
     ],
     prompt: $prompt
   }' > "$AGENTS_DIR/planner.json"
 inject_planner_plan_write_hook "$AGENTS_DIR/planner.json"
+inject_planner_task_markdown_hook "$AGENTS_DIR/planner.json"
 inject_caveman_hook "$AGENTS_DIR/planner.json"
 inject_locale_hook "$AGENTS_DIR/planner.json"
 
@@ -471,8 +458,6 @@ inject_locale_hook "$AGENTS_DIR/planner.json"
 jq -n \
   --arg prompt "file://${HOME_DIR}/.kiro/agents/code_supervisor.md" \
   --arg skills "$KIRO_SKILLS_URI" \
-  --arg agents_skills "$AGENTS_SKILLS_URI" \
-  --arg agents_skills_dir "$AGENTS_SKILLS_DIR" \
   --arg notify "${HOME_DIR}/.kiro/hooks/code_supervisor/cmux-notify.sh" \
   --arg phase_reminder "$KIRO_DIR/hooks/code_supervisor/phase-reminder.sh" \
   --arg validate_write "${HOME_DIR}/.kiro/hooks/code_supervisor/validate-supervisor-plan-write.js" \
@@ -491,7 +476,7 @@ jq -n \
         allowedPaths: ["./.plan"]
       },
       read: {
-        allowedPaths: ["./.plan", "/var/folders", $home_kiro, $agents_skills_dir]
+        allowedPaths: ["./.plan", "/var/folders", $home_kiro]
       },
       subagent: {
         availableAgents: ["planner", "designer", "developer", "explorer", "reviewer", "simplifier", "tester", "debugger", "councillor-a", "councillor-b", "councillor-c", "council-master"],
@@ -501,7 +486,6 @@ jq -n \
     resources: [
       "skill://.kiro/skills/*/SKILL.md",
       "file://.kiro/steering/*.md",
-      $agents_skills,
       $skills
     ],
     mcpServers: {

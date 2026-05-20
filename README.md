@@ -83,7 +83,7 @@ kiro-cli chat   # defaults to code_supervisor agent
 
 ## Hooks
 
-11 hooks total — root `hooks/` is reserved for all-agent hooks; agent-specific and group-specific hooks live under scoped subdirectories.
+12 hooks total — root `hooks/` is reserved for all-agent hooks; agent-specific and group-specific hooks live under scoped subdirectories.
 
 | Hook | Trigger | Scope | Description |
 |------|---------|-------|-------------|
@@ -96,6 +96,7 @@ kiro-cli chat   # defaults to code_supervisor agent
 | `code_supervisor/validate-read-allowed-paths.js` | `preToolUse` | code_supervisor | Blocks read tools outside `.plan/`, Kiro home, and `/var/folders` |
 | `code_supervisor/validate-supervisor-plan-write.js` | `preToolUse` | code_supervisor | Blocks supervisor writes to planner-owned files and only activates planner-ready plans |
 | `planner/validate-planner-plan-write.js` | `preToolUse` | planner | Allows planner to write formal plan files inside `.plan/` |
+| `planner/open-task-markdown.js` | `postToolUse` | planner | Opens `.plan/<task>/task.md` in cmux markdown after the first successful write when cmux is available |
 | `plan_writers/validate-artifact-plan-write.js` | `preToolUse` | `.plan` artifact writers | Blocks writes outside `.plan/` and protects planner-owned files |
 | `source_writing/validate-developer-plan.js` | `preToolUse` | source-writing agents | Blocks write/code/shell tools unless `.active-developer-plan` points to a planner-ready task folder |
 
@@ -145,7 +146,7 @@ sudo ln -sf "/Applications/cmux.app/Contents/Resources/bin/cmux" /usr/local/bin/
 
 The `code_supervisor/cmux-notify.sh` hook (triggered on `stop` for `code_supervisor`) sends a desktop notification via `cmux notify` whenever the orchestrator finishes responding. The cmux sidebar tab lights up with a blue notification ring showing the project name and a preview of the response — useful when managing multiple Kiro CLI sessions across workspaces.
 
-The hook includes a guard clause (`cmux ping || exit 0`) so it silently does nothing if cmux is not installed or not running.
+The `planner/open-task-markdown.js` hook opens the first successful `.plan/<task>/task.md` write in `cmux markdown`, then relies on live reload for later planner updates. Both cmux hooks include availability checks (`cmux ping`) so they silently do nothing if cmux is not installed or not running.
 
 ## MCP Servers
 

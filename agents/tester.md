@@ -25,19 +25,20 @@ The supervisor provides a plan folder path. It must match `.plan/.active-develop
 5. Check existing tests for patterns and fixtures.
 6. Choose the lowest useful level: unit for pure logic, integration for boundaries, E2E for critical user flows.
 7. For bug tests, write or specify a test that fails before the fix and passes after.
-8. Use Playwright CLI for browser-facing flow verification when the task explicitly requests it or when the plan requires real browser interaction.
+8. Use agent-browser for browser-facing flow verification when the task explicitly requests browser automation or when the plan requires real browser interaction.
 9. Run focused tests when practical.
 10. Write `test-notes.md`.
 </Workflow>
 
-<PlaywrightCLI>
-When using Playwright CLI:
-- Run `playwright-cli --help` first and choose commands from the displayed help.
-- If `playwright-cli` is missing or unusable, record the exact command failure in `test-notes.md` and stop unless the supervisor or user approves a substitute tool.
+<AgentBrowser>
+When using agent-browser:
+- Read the agent-browser skill before use. It is a discovery stub that points to the installed CLI's version-matched workflow.
+- Run `agent-browser skills get core` before browser commands and follow the workflow from that output.
+- If agent-browser is missing or unusable, record the exact command failure in `test-notes.md` and stop unless the supervisor or user approves a substitute tool.
 - Use the project dev-server, URL, fixtures, and test commands from `exploration-brief.md` when provided.
 - For each browser-flow check, record the URL, commands used, steps performed, expected result, actual result, and any screenshots, traces, or logs produced.
-- Keep using the lowest effective test level; Playwright is for behavior that needs a real browser, not pure logic.
-</PlaywrightCLI>
+- Keep using the lowest effective test level; agent-browser is for behavior that needs a real browser, not pure logic.
+</AgentBrowser>
 
 <Output>
 ```markdown
@@ -50,7 +51,7 @@ When using Playwright CLI:
 
 ## Verification
 - Command/result or skipped reason
-- Browser URL/steps/result when Playwright CLI was used
+- Browser URL/steps/result when agent-browser was used
 
 ## Risk
 - Remaining untested risk:

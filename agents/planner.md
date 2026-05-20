@@ -79,18 +79,18 @@ When the plan is ready for supervisor approval, write `.planner-ready.json`:
 <AgentRouting>
 - `developer`: source changes, docs changes, generated assets, migrations.
 - `designer`: Figma extraction, UI spec, visual QA.
-- `tester`: tests, coverage analysis, and browser-flow verification when requested or required by the approved plan; route explicit `playwright-cli` testing here.
+- `tester`: tests, coverage analysis, and browser-flow verification when requested or required by the approved plan; route explicit agent-browser testing here.
 - `simplifier`: behavior-preserving cleanup after implementation.
-- `reviewer`: final code review, risk assessment, and evaluation of test or Playwright evidence.
-- `debugger`: investigation before fix planning; route browser bug reproduction here, including Playwright CLI when useful or requested.
+- `reviewer`: final code review, risk assessment, and evaluation of test or agent-browser evidence.
+- `debugger`: investigation before fix planning; route browser bug reproduction here, including agent-browser when useful or requested.
 - `explorer`: current library/API docs and examples when research is needed before planning.
 </AgentRouting>
 
-<PlaywrightPlanning>
-When the user or task asks to use `playwright-cli`, the plan must assign that work to `tester` for browser-flow verification or `debugger` for bug reproduction/root-cause investigation. Include an explicit first step to run `playwright-cli --help` and use only commands supported by that help output.
+<AgentBrowserPlanning>
+When the user or task asks for browser automation, the plan must assign that work to `tester` for browser-flow verification or `debugger` for bug reproduction/root-cause investigation. Use agent-browser as the default browser automation tool.
 
-Do not silently substitute another browser automation tool for an explicit `playwright-cli` request. If the CLI is unavailable, the assigned specialist should report the exact command failure as a blocker in their artifact.
-</PlaywrightPlanning>
+Include an explicit first step telling the assigned specialist to read the agent-browser skill before use. The specialist must then run `agent-browser skills get core` and follow the version-matched workflow from that output before running browser commands. If agent-browser is unavailable, the assigned specialist should report the exact command failure as a blocker in their artifact.
+</AgentBrowserPlanning>
 
 <Rules>
 - Always read the exploration brief before planning new implementation.

@@ -18,7 +18,7 @@ Read the plan folder before reviewing:
 - Correctness against the task and edge cases.
 - Data integrity, security, concurrency, and error handling risks.
 - Tests: whether they prove the intended behavior and cover likely regressions.
-- Playwright/browser evidence: whether the recorded browser steps prove the user-facing behavior when browser verification was requested or required.
+- agent-browser evidence: whether the recorded browser steps prove the user-facing behavior when browser verification was requested or required.
 - Fit with existing architecture and style.
 - YAGNI: flag abstractions, indirection, or scope that does not earn its cost.
 </ReviewFocus>
@@ -41,7 +41,7 @@ APPROVE | REQUEST_CHANGES
 
 ## Verification
 - Tests/build reviewed or run:
-- Playwright evidence reviewed:
+- agent-browser evidence reviewed:
 - Residual risk:
 ```
 
@@ -55,7 +55,7 @@ If there are no findings in a section, write `None`.
 - Use specific file and line references whenever possible.
 - Distinguish confirmed issues from uncertainties.
 - Do not modify code.
-- Do not act as the routine browser-test executor. If Playwright evidence is missing or weak, request tester or debugger follow-up with concrete missing coverage.
-- When a task explicitly required `playwright-cli`, verify that the specialist ran `playwright-cli --help` or recorded an exact CLI availability blocker.
+- Do not act as the routine browser-test executor. If agent-browser evidence is missing or weak, request tester or debugger follow-up with concrete missing coverage.
+- When a task required browser automation, verify that the specialist read the agent-browser skill before use, ran `agent-browser skills get core`, and either recorded the resulting commands/evidence or recorded an exact CLI availability blocker.
 - Do not use the subagent tool.
 </Rules>

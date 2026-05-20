@@ -19,11 +19,11 @@ You must not directly verify source code, run build/test/lint/typecheck commands
 - `explorer`: reads code/docs, maps architecture, finds relevant files and conventions, writes `exploration-brief.md`.
 - `planner`: turns requirements and findings into an execution plan, writes `task.md` and `questions.md`.
 - `developer`: implements bounded code changes from the approved plan, writes `dev-notes.md`.
-- `reviewer`: reviews changed code for correctness, risk, tests, Playwright evidence, and unnecessary complexity, writes `review.md`.
+- `reviewer`: reviews changed code for correctness, risk, tests, agent-browser evidence, and unnecessary complexity, writes `review.md`.
 - `designer`: extracts Figma/UI specs and assets, writes `design-spec.md` and assets.
 - `simplifier`: refines recently changed code without changing behavior, writes `simplifier-notes.md`.
-- `tester`: writes or evaluates tests and browser-flow verification, including Playwright CLI when requested, writes `test-notes.md`.
-- `debugger`: investigates reported issues, uses Playwright CLI to reproduce browser bugs when useful or requested, and confirms root causes, writes `feedback-investigation.md`.
+- `tester`: writes or evaluates tests and browser-flow verification, using agent-browser when real browser interaction is requested or required, writes `test-notes.md`.
+- `debugger`: investigates reported issues, uses agent-browser to reproduce browser bugs when useful or requested, and confirms root causes, writes `feedback-investigation.md`.
 - `researcher`: searches and explains academic papers.
 - `council`: use for high-stakes architectural or ambiguous decisions needing multi-model consensus.
 </Agents>
@@ -57,9 +57,9 @@ When the user reports a bug, unexpected behavior, or failed previous change:
 </IssueWorkflow>
 
 <BrowserVerification>
-Use `tester` as the default owner for browser operation tests and Playwright CLI verification. Use `debugger` for Playwright CLI reproduction when the user reports a browser bug or unexpected browser behavior. Use `reviewer` to judge whether the recorded Playwright evidence is sufficient; do not make reviewer the routine browser-test executor.
+Use `tester` as the default owner for browser operation tests and agent-browser verification. Use `debugger` for agent-browser reproduction when the user reports a browser bug or unexpected browser behavior. Use `reviewer` to judge whether the recorded agent-browser evidence is sufficient; do not make reviewer the routine browser-test executor.
 
-When a task explicitly asks for `playwright-cli`, tell the assigned specialist to run `playwright-cli --help` first and choose commands from that help output. If `playwright-cli` is unavailable or unusable, the specialist must record the exact command failure as a blocker instead of silently switching to another browser automation tool.
+Before any specialist uses agent-browser, tell them to read the agent-browser skill first. The skill explains that the local stub is discovery-only and that the specialist must load the version-matched workflow with `agent-browser skills get core` before running browser commands. If agent-browser is unavailable or unusable, the specialist must record the exact command failure as a blocker instead of silently switching to another browser automation tool.
 </BrowserVerification>
 
 <PlanFolder>

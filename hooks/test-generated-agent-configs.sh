@@ -10,6 +10,9 @@ ACTIVE_PLAN_HOOK="$HOME/.kiro/hooks/source_writing/validate-developer-plan.js"
 READ_HOOK="$HOME/.kiro/hooks/code_supervisor/validate-read-allowed-paths.js"
 PHASE_HOOK="$HOME/.kiro/hooks/code_supervisor/phase-reminder.sh"
 RTK_HOOK="$HOME/.kiro/hooks/shell/rtk-rewrite.js"
+AGENTS_SKILLS_URI="skill://$HOME/.agents/skills/**/SKILL.md"
+AGENTS_SKILLS_DIR="$HOME/.agents/skills"
+PROMPT_DIR="$ROOT/agents"
 
 cd "$ROOT"
 EXA_API_KEY=dummy bash "$ROOT/generate-configs.sh" >/tmp/generated-agent-configs.out
@@ -33,6 +36,31 @@ require_no_file() {
 
   if [[ -e "$file" ]]; then
     echo "$message" >&2
+    exit 1
+  fi
+}
+
+require_prompt_contains() {
+  local file="$1"
+  local pattern="$2"
+  local message="$3"
+
+  if ! grep -q "$pattern" "$file"; then
+    echo "$message" >&2
+    echo "File: $file" >&2
+    exit 1
+  fi
+}
+
+require_prompt_not_contains() {
+  local file="$1"
+  local pattern="$2"
+  local message="$3"
+
+  if grep -qi "$pattern" "$file"; then
+    echo "$message" >&2
+    echo "File: $file" >&2
+    grep -ni "$pattern" "$file" >&2
     exit 1
   fi
 }
@@ -97,10 +125,33 @@ for name in developer tester simplifier; do
   require_active_plan_writer "$name"
 done
 
+for name in developer reviewer explorer simplifier tester debugger planner code_supervisor; do
+  require_jq "$AGENTS_DIR/$name.json" \
+    'any(.resources[]?; . == "'"$AGENTS_SKILLS_URI"'")' \
+    "$name must include ~/.agents/skills as a skill resource"
+done
+
+for name in developer reviewer simplifier tester debugger planner code_supervisor; do
+  require_jq "$AGENTS_DIR/$name.json" \
+    'any(.toolsSettings.read.allowedPaths[]?; . == "'"$AGENTS_SKILLS_DIR"'")' \
+    "$name must include ~/.agents/skills as a readable skill root"
+done
+
 for name in developer reviewer designer explorer simplifier tester debugger; do
   require_jq "$AGENTS_DIR/$name.json" \
     'any(.hooks.preToolUse[]?; .command == "'"$RTK_HOOK"'" and .matcher == "shell")' \
     "$name must use the Node.js RTK rewrite hook"
+done
+
+require_jq "$AGENTS_DIR/reviewer.json" \
+  '(.toolsSettings.shell.allowedCommands | any(. == "rtk agent-browser(?:[[:space:]].*)?")) and (.toolsSettings.shell.allowedCommands | any(. == "rtk npx[[:space:]]+agent-browser(?:[[:space:]].*)?")) and (.toolsSettings.shell.allowedCommands | all(test("playwright-cli") | not))' \
+  "reviewer shell allowlist must use agent-browser instead of playwright-cli"
+
+for name in code_supervisor planner tester debugger reviewer; do
+  prompt="$PROMPT_DIR/$name.md"
+  require_prompt_contains "$prompt" "agent-browser" "$name prompt must route browser automation through agent-browser"
+  require_prompt_contains "$prompt" "agent-browser skill" "$name prompt must tell agents to read the agent-browser skill before use"
+  require_prompt_not_contains "$prompt" "playwright-cli\\|Playwright" "$name prompt must not mention Playwright after agent-browser migration"
 done
 
 require_no_file "$AGENTS_DIR/librarian.json" "librarian.json should not be generated after merging librarian into explorer"
@@ -117,8 +168,8 @@ if ! jq -e --arg hook "$PHASE_HOOK" \
   exit 1
 fi
 
-if ! jq -e --arg hook "$READ_HOOK" --arg home "$HOME/.kiro" \
-  '.toolsSettings.read.allowedPaths == ["./.plan", "/var/folders", $home] and any(.hooks.preToolUse[]?; .command == $hook and .matcher == "read")' \
+if ! jq -e --arg hook "$READ_HOOK" --arg home "$HOME/.kiro" --arg agents_skills "$AGENTS_SKILLS_DIR" \
+  '.toolsSettings.read.allowedPaths == ["./.plan", "/var/folders", $home, $agents_skills] and any(.hooks.preToolUse[]?; .command == $hook and .matcher == "read")' \
   "$AGENTS_DIR/code_supervisor.json" >/dev/null; then
   echo "code_supervisor must restrict read roots and use the read-path hook" >&2
   jq '{name, toolsSettings, hooks}' "$AGENTS_DIR/code_supervisor.json" >&2

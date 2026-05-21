@@ -30,6 +30,14 @@ inject_rtk_hook() {
     "$agent_file" > "${agent_file}.tmp" && mv "${agent_file}.tmp" "$agent_file"
 }
 
+DEVELOPER_RM_HOOK="$KIRO_DIR/hooks/shell/validate-local-rm.js"
+inject_developer_rm_hook() {
+  local agent_file="$1"
+  jq --arg hook "$DEVELOPER_RM_HOOK" \
+    '.hooks.preToolUse = (.hooks.preToolUse // []) + [{ command: $hook, matcher: "shell" }]' \
+    "$agent_file" > "${agent_file}.tmp" && mv "${agent_file}.tmp" "$agent_file"
+}
+
 RTK_SPAWN_HOOK="$KIRO_DIR/hooks/shell/rtk-rules.sh"
 inject_rtk_spawn_hook() {
   local agent_file="$1"
@@ -131,7 +139,8 @@ jq -n \
           "rtk tsc(?:[[:space:]].*)?",
           "rtk cat .*",
           "rtk sed .*",
-          "rtk head .*"
+          "rtk head .*",
+          "rtk rm .*"
         ],
         autoAllowReadonly: true,
         denyByDefault: true
@@ -148,6 +157,7 @@ jq -n \
     prompt: $prompt
   }' > "$AGENTS_DIR/developer.json"
 inject_developer_plan_hook "$AGENTS_DIR/developer.json"
+inject_developer_rm_hook "$AGENTS_DIR/developer.json"
 inject_rtk_hook "$AGENTS_DIR/developer.json"
 inject_rtk_spawn_hook "$AGENTS_DIR/developer.json"
 inject_caveman_hook "$AGENTS_DIR/developer.json"
@@ -423,11 +433,15 @@ jq -n \
     name: "planner",
     description: "Planner Agent that analyzes context and produces structured execution plans",
     model: "claude-opus-4.6",
-    tools: ["read", "write", "grep", "glob"],
+    tools: ["read", "write", "grep", "glob", "shell"],
     allowedTools: [],
     useLegacyMcpJson: false,
     welcomeMessage: "What task needs a plan?",
     toolsSettings: {
+      shell: {
+        allowedCommands: ["rtk cmux markdown .*"],
+        denyByDefault: true
+      },
       grep: {
         allowedPaths: ["./"]
       },
@@ -468,10 +482,14 @@ jq -n \
     prompt: $prompt,
     model: "claude-opus-4.6",
     description: "Coding Supervisor Agent that orchestrates and delegates tasks to specialized agents",
-    tools: ["read", "write", "subagent", "todo", "thinking", "introspect", "session", "@git"],
+    tools: ["read", "write", "subagent", "todo", "thinking", "introspect", "session", "shell", "@git"],
     allowedTools: ["subagent", "todo", "thinking", "introspect", "session", "@git"],
     useLegacyMcpJson: false,
     toolsSettings: {
+      shell: {
+        allowedCommands: ["cmux markdown .*", "mkdir -p ./.plan/.*"],
+        denyByDefault: true
+      },
       write: {
         allowedPaths: ["./.plan"]
       },
@@ -668,7 +686,7 @@ done
 echo "  Settings:"
 echo "    ✓ $KIRO_DIR/settings/mcp.json"
 echo "  Hooks (managed separately in hooks/):"
-for f in caveman.sh locale.sh code_supervisor/phase-reminder.sh code_supervisor/cmux-notify.sh code_supervisor/validate-read-allowed-paths.js code_supervisor/validate-supervisor-plan-write.js planner/validate-planner-plan-write.js plan_writers/validate-artifact-plan-write.js source_writing/validate-developer-plan.js shell/rtk-rewrite.js shell/rtk-rules.sh; do
+for f in caveman.sh locale.sh code_supervisor/phase-reminder.sh code_supervisor/cmux-notify.sh code_supervisor/validate-read-allowed-paths.js code_supervisor/validate-supervisor-plan-write.js planner/validate-planner-plan-write.js plan_writers/validate-artifact-plan-write.js source_writing/validate-developer-plan.js shell/rtk-rewrite.js shell/rtk-rules.sh shell/validate-local-rm.js; do
   if [ -f "$KIRO_DIR/hooks/$f" ]; then
     echo "    ✓ $KIRO_DIR/hooks/$f"
   else

@@ -11,6 +11,7 @@ ACTIVE_PLAN_HOOK="$HOME/.kiro/hooks/source_writing/validate-developer-plan.js"
 READ_HOOK="$HOME/.kiro/hooks/code_supervisor/validate-read-allowed-paths.js"
 PHASE_HOOK="$HOME/.kiro/hooks/code_supervisor/phase-reminder.sh"
 RTK_HOOK="$HOME/.kiro/hooks/shell/rtk-rewrite.js"
+LOCAL_RM_HOOK="$HOME/.kiro/hooks/shell/validate-local-rm.js"
 DISALLOWED_AGENTS_SKILLS_URI="skill://$HOME/.agents/skills/**/SKILL.md"
 DISALLOWED_AGENTS_SKILLS_DIR="$HOME/.agents/skills"
 PROMPT_DIR="$ROOT/agents"
@@ -150,6 +151,16 @@ for name in developer reviewer designer explorer simplifier tester debugger; do
   require_jq "$AGENTS_DIR/$name.json" \
     'any(.hooks.preToolUse[]?; .command == "'"$RTK_HOOK"'" and .matcher == "shell")' \
     "$name must use the Node.js RTK rewrite hook"
+done
+
+require_jq "$AGENTS_DIR/developer.json" \
+  'any(.hooks.preToolUse[]?; .command == "'"$LOCAL_RM_HOOK"'" and .matcher == "shell")' \
+  "developer must use the local rm validation hook"
+
+for name in reviewer designer explorer simplifier tester debugger; do
+  require_jq "$AGENTS_DIR/$name.json" \
+    'all(.hooks.preToolUse[]?; .command != "'"$LOCAL_RM_HOOK"'")' \
+    "$name must not use the developer-only local rm validation hook"
 done
 
 require_jq "$AGENTS_DIR/reviewer.json" \

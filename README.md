@@ -83,12 +83,13 @@ kiro-cli chat   # defaults to code_supervisor agent
 
 ## Hooks
 
-12 hooks total — root `hooks/` is reserved for all-agent hooks; agent-specific and group-specific hooks live under scoped subdirectories.
+13 hooks total — root `hooks/` is reserved for all-agent hooks; agent-specific and group-specific hooks live under scoped subdirectories.
 
 | Hook | Trigger | Scope | Description |
 |------|---------|-------|-------------|
 | `shell/rtk-rewrite.js` | `preToolUse` (shell) | Most agents | Intercepts shell commands, rewrites via RTK for token efficiency. Blocks original and suggests rtk-prefixed version. |
 | `shell/rtk-rules.sh` | `agentSpawn` | Most agents | Injects RTK usage instructions into agent context at startup |
+| `shell/validate-local-rm.js` | `preToolUse` (shell) | developer | Blocks `rm` targets that resolve outside the current working directory |
 | `caveman.sh` | `agentSpawn` | All agents | Injects caveman speech style instruction |
 | `locale.sh` | `agentSpawn` | All agents | Injects Traditional Chinese (繁體中文) locale instruction |
 | `code_supervisor/phase-reminder.sh` | `userPromptSubmit` | code_supervisor | Injects a hard workflow reminder for plan checks, delegation, execution, and artifact-based verification on every prompt |

@@ -16,7 +16,11 @@ function parsePayload(input) {
 }
 
 function normalizePath(base, value) {
-  const absolute = path.isAbsolute(value) ? value : path.resolve(base, value);
+  const expanded =
+    value === "~" || value.startsWith(`~${path.sep}`)
+      ? path.join(os.homedir(), value.slice(1))
+      : value;
+  const absolute = path.isAbsolute(expanded) ? expanded : path.resolve(base, expanded);
   const parts = path.resolve(absolute).split(path.sep);
   for (let i = parts.length; i > 0; i -= 1) {
     const existing = parts.slice(0, i).join(path.sep) || path.sep;

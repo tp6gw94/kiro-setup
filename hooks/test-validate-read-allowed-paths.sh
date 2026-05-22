@@ -4,17 +4,18 @@ set -euo pipefail
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 HOOK="$ROOT/hooks/code_supervisor/validate-read-allowed-paths.js"
 
-tmpdir=$(mktemp -d)
+tmpdir=$(mktemp -d /tmp/validate-read-allowed-paths.XXXXXX)
 trap 'rm -rf "$tmpdir"' EXIT
 
-kiro_home="$tmpdir/kiro-home"
+test_home="$tmpdir/home"
+kiro_home="$test_home/.kiro"
 mkdir -p "$tmpdir/.plan/task" "$kiro_home/agents"
 
 run_hook() {
   local payload="$1"
   (
     cd "$tmpdir"
-    KIRO_HOME="$kiro_home" printf '%s\n' "$payload" | KIRO_HOME="$kiro_home" "$HOOK"
+    HOME="$test_home" KIRO_HOME="$kiro_home" printf '%s\n' "$payload" | HOME="$test_home" KIRO_HOME="$kiro_home" "$HOOK"
   )
 }
 
@@ -28,6 +29,10 @@ assert_allows_relative_plan_read() {
 
 assert_allows_kiro_home_read() {
   run_hook '{"cwd":"'"$tmpdir"'","tool_input":{"operations":[{"mode":"Line","path":"'"$kiro_home"'/agents/code_supervisor.md"}]}}'
+}
+
+assert_allows_tilde_kiro_home_read() {
+  run_hook '{"cwd":"'"$tmpdir"'","tool_input":{"operations":[{"mode":"Line","path":"~/.kiro/agents/code_supervisor.md"}]}}'
 }
 
 assert_allows_var_folders_read() {
@@ -76,6 +81,7 @@ assert_blocks_unknown_shape() {
 assert_allows_plan_read
 assert_allows_relative_plan_read
 assert_allows_kiro_home_read
+assert_allows_tilde_kiro_home_read
 assert_allows_var_folders_read
 assert_blocks_outside_read
 assert_blocks_mixed_operations

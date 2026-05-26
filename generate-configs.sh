@@ -306,7 +306,7 @@ jq -n \
     description: "Code Simplifier Agent that refines code for clarity, consistency, and maintainability while preserving functionality",
     model: "claude-opus-4.6",
     tools: ["read", "write", "grep", "glob", "shell", "@git"],
-    allowedTools: ["shell", "@git/git_status", "@git/git_diff", "@git/git_diff_*"],
+    allowedTools: ["shell", "@git"],
     useLegacyMcpJson: false,
     toolsSettings: {
       glob: {
@@ -494,7 +494,7 @@ jq -n \
         allowedPaths: ["./.plan"]
       },
       read: {
-        allowedPaths: ["./.plan", "/var/folders", $home_kiro]
+        allowedPaths: ["./.plan", "/var/folders", "/private/var/folders", $home_kiro]
       },
       subagent: {
         availableAgents: ["planner", "designer", "developer", "explorer", "reviewer", "simplifier", "tester", "debugger", "councillor-a", "councillor-b", "councillor-c", "council-master"],

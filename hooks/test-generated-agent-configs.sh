@@ -189,7 +189,7 @@ if ! jq -e --arg hook "$PHASE_HOOK" \
 fi
 
 if ! jq -e --arg hook "$READ_HOOK" --arg home "$HOME/.kiro" \
-  '.toolsSettings.read.allowedPaths == ["./.plan", "/var/folders", $home] and any(.hooks.preToolUse[]?; .command == $hook and .matcher == "read")' \
+  '.toolsSettings.read.allowedPaths == ["./.plan", "/var/folders", "/private/var/folders", $home] and any(.hooks.preToolUse[]?; .command == $hook and .matcher == "read")' \
   "$AGENTS_DIR/code_supervisor.json" >/dev/null; then
   echo "code_supervisor must restrict read roots and use the read-path hook" >&2
   jq '{name, toolsSettings, hooks}' "$AGENTS_DIR/code_supervisor.json" >&2

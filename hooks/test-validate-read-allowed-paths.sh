@@ -39,6 +39,10 @@ assert_allows_var_folders_read() {
   run_hook '{"cwd":"'"$tmpdir"'","tool_input":{"operations":[{"mode":"Line","path":"/var/folders/example"}]}}'
 }
 
+assert_allows_private_var_folders_read() {
+  run_hook '{"cwd":"'"$tmpdir"'","tool_input":{"operations":[{"mode":"Line","path":"/private/var/folders/example"}]}}'
+}
+
 assert_blocks_outside_read() {
   local err="$tmpdir/read.err"
 
@@ -83,6 +87,7 @@ assert_allows_relative_plan_read
 assert_allows_kiro_home_read
 assert_allows_tilde_kiro_home_read
 assert_allows_var_folders_read
+assert_allows_private_var_folders_read
 assert_blocks_outside_read
 assert_blocks_mixed_operations
 assert_blocks_unknown_shape

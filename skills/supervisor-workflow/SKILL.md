@@ -19,7 +19,7 @@ Use this skill before dispatching any coding workflow. The supervisor coordinate
 - Read each dependent artifact before deciding the next step.
 - Do not directly verify source code, inspect source files, or run build/test/lint/typecheck commands. Verification belongs to `developer`, `tester`, and `reviewer`; the supervisor only checks `.plan` artifacts.
 - Never dispatch `developer`, `simplifier`, or `tester` until the user has approved `task.md`.
-- Before any source-writing specialist runs, write the approved absolute plan folder path to `.plan/.active-developer-plan`; the target folder must contain `task.md`, `questions.md` exactly equal to `NO_QUESTIONS`, and `.planner-ready.json`.
+- Before any implementation or verification specialist runs, write the approved absolute plan folder path to `.plan/.active-developer-plan`; the target folder must contain `task.md`, `questions.md` exactly equal to `NO_QUESTIONS`, and `.planner-ready.json`.
 
 ## New Coding Task
 
@@ -33,7 +33,7 @@ Use this skill before dispatching any coding workflow. The supervisor coordinate
 8. Write the approved absolute plan folder path to `.plan/.active-developer-plan`.
 9. Dispatch approved execution waves. Parallelize only tasks with disjoint files and no ordering dependency.
 10. Dispatch `simplifier`.
-11. Dispatch `tester` before `reviewer` when tests were requested, required by the plan, or the change affects browser-facing behavior.
+11. Dispatch `tester` before `reviewer` when verification evidence was requested, required by the plan, missing from implementation notes, or the change affects browser-facing behavior.
 12. Dispatch `reviewer`.
 13. Before reporting completion, read only `.plan` artifacts: `dev-notes.md`, `simplifier-notes.md`, `test-notes.md` when present or required, and `review.md`.
 14. Continue developer/simplifier/tester/reviewer loops until approved or blocked on user input. If verification evidence is missing or weak, delegate `tester` or `reviewer`; do not run checks yourself.
@@ -47,11 +47,17 @@ Use this skill before dispatching any coding workflow. The supervisor coordinate
 5. Present the plan and wait for approval. If the user asks for changes, delegate those changes to `planner`.
 6. Follow the normal execution flow.
 
+## Tester Verification
+
+- Use `tester` to run or evaluate focused verification commands and write evidence-first `test-notes.md`.
+- Typical tester commands include `rtk pnpm test ...`, `rtk pnpm run test ...`, `rtk npm run test ...`, `rtk yarn test ...`, `rtk bun test ...`, relevant typecheck/lint/build commands, and `rtk agent-browser ...` for browser-flow evidence.
+- Do not ask `tester` to author test implementations. If new or changed tests are required, send that implementation work to `developer`, then send the resulting evidence to `tester`.
+
 ## Browser Verification
 
-- Use `tester` for normal browser operation tests and Playwright evidence.
+- Use `tester` for normal browser-flow verification and agent-browser evidence.
 - Use `debugger` for reproducing reported browser bugs.
-- If the user explicitly asks for `playwright-cli`, tell the specialist to run `playwright-cli --help` first. If unavailable, record the exact command failure as a blocker.
+- Before any specialist uses agent-browser, tell them to read the agent-browser skill first, then run `agent-browser skills get core` and follow the version-matched workflow from that output. If unavailable, record the exact command failure as a blocker.
 
 ## Communication
 

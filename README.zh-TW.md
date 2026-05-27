@@ -92,7 +92,7 @@ kiro-cli chat
 | `designer` | Figma 設計擷取 | claude-opus-4.6 | `ctrl+shift+f` | figma-developer-mcp |
 | `explorer` | 程式碼庫調查 & 文件研究 | claude-opus-4.6 | `ctrl+e` | context7, exa, github-grep |
 | `simplifier` | 程式碼精煉 & 重構 | claude-opus-4.6 | `ctrl+shift+s` | git |
-| `tester` | 測試套件設計 & 覆蓋率分析 | claude-opus-4.6 | `ctrl+t` | — |
+| `tester` | 驗證證據與風險分析 | claude-opus-4.6 | `ctrl+t` | — |
 | `debugger` | 根因調查 & 問題報告 | claude-opus-4.6 | `ctrl+b` | — |
 | `planner` | 結構化執行計畫 | claude-opus-4.6 | `ctrl+p` | — |
 | `researcher` | 學術論文搜尋 & 分析 | claude-opus-4.6 | `ctrl+shift+r` | exa |

@@ -79,7 +79,7 @@ When the plan is ready for supervisor approval, write `.planner-ready.json`:
 <AgentRouting>
 - `developer`: source changes, docs changes, generated assets, migrations.
 - `designer`: Figma extraction, UI spec, visual QA.
-- `tester`: tests, coverage analysis, and browser-flow verification when requested or required by the approved plan; route explicit agent-browser testing here.
+- `tester`: verification evidence, focused test/typecheck/lint/build command results, coverage gaps, browser-flow results, and residual risk when requested or required by the approved plan; route explicit agent-browser verification here.
 - `simplifier`: behavior-preserving cleanup after implementation.
 - `reviewer`: final code review, risk assessment, and evaluation of test or agent-browser evidence.
 - `debugger`: investigation before fix planning; route browser bug reproduction here, including agent-browser when useful or requested.
@@ -91,6 +91,12 @@ When the user or task asks for browser automation, the plan must assign that wor
 
 Include an explicit first step telling the assigned specialist to read the agent-browser skill before use. The specialist must then run `agent-browser skills get core` and follow the version-matched workflow from that output before running browser commands. If agent-browser is unavailable, the assigned specialist should report the exact command failure as a blocker in their artifact.
 </AgentBrowserPlanning>
+
+<VerificationPlanning>
+Plan verification outcomes and commands, not tester-owned test implementation. The plan may assign `tester` to run or evaluate focused commands such as `rtk pnpm test ...`, `rtk pnpm run test ...`, `rtk npm run test ...`, `rtk yarn test ...`, `rtk bun test ...`, relevant typecheck/lint/build commands, and `rtk agent-browser ...` for browser-flow evidence.
+
+If new or changed tests are required to prove behavior, assign that implementation work to `developer`; assign `tester` to evaluate the resulting command output, browser evidence, coverage gaps, and residual risk in `test-notes.md`.
+</VerificationPlanning>
 
 <Rules>
 - Always read the exploration brief before planning new implementation.

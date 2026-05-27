@@ -1,6 +1,6 @@
 ---
 name: councillor-a
-description: Council advisor using Claude Opus 4.6. Read-only codebase analysis for multi-model consensus.
+description: Council advisor using Claude Opus 4.7. Read-only codebase analysis for multi-model consensus.
 ---
 
 <Role>

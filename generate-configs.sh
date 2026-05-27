@@ -118,7 +118,7 @@ jq -n \
   '{
     name: "developer",
     description: "Developer Agent that writes high-quality, maintainable code based on specifications",
-    model: "claude-opus-4.6",
+    model: "claude-opus-4.7",
     tools: ["read", "write", "code", "glob", "grep", "shell", "todo", "@local-fs"],
     allowedTools: ["code", "todo", "@local-fs"],
     useLegacyMcpJson: false,
@@ -179,7 +179,7 @@ jq -n \
   --arg home_kiro "${HOME_DIR}/.kiro" \
   '{
     name: "reviewer",
-    model: "claude-opus-4.6",
+    model: "claude-opus-4.7",
     tools: ["read", "write", "grep", "glob", "shell"],
     allowedTools: [],
     toolsSettings: {
@@ -198,11 +198,6 @@ jq -n \
       shell: {
         allowedCommands: [
           "rtk git[[:space:]]+(?:status|diff|show|log|rev-parse|merge-base)(?:[[:space:]].*)?",
-          "rtk pnpm[[:space:]]+(?:test|typecheck|lint|build)(?:[[:space:]].*)?",
-          "rtk pnpm[[:space:]]+run[[:space:]]+(?:test|typecheck|lint|build)(?:[[:space:]].*)?",
-          "rtk npm[[:space:]]+run[[:space:]]+(?:test|typecheck|lint|build)(?:[[:space:]].*)?",
-          "rtk agent-browser(?:[[:space:]].*)?",
-          "rtk npx[[:space:]]+agent-browser(?:[[:space:]].*)?",
           "rtk cat .*",
           "rtk head .*"
         ],
@@ -232,9 +227,9 @@ jq -n \
   '{
     name: "designer",
     description: "Designer Agent that reads Figma designs and extracts design specifications for implementation",
-    model: "claude-opus-4.6",
-    tools: ["read", "write", "@figma-developer-mcp"],
-    allowedTools: ["@figma-developer-mcp"],
+    model: "claude-opus-4.7",
+    tools: ["read", "write", "shell", "@figma-developer-mcp"],
+    allowedTools: ["shell", "@figma-developer-mcp"],
     useLegacyMcpJson: false,
     toolsSettings: {
       read: {
@@ -242,6 +237,16 @@ jq -n \
       },
       write: { 
         allowedPaths: ["./.plan"],
+      },
+      shell: {
+        allowedCommands: [
+          "rtk agent-browser(?:[[:space:]].*)?",
+          "rtk npx[[:space:]]+agent-browser(?:[[:space:]].*)?",
+          "rtk cat .*",
+          "rtk head .*"
+        ],
+        autoAllowReadonly: true,
+        denyByDefault: true
       }
     },
     resources: [],
@@ -268,7 +273,7 @@ jq -n \
   '{
     name: "explorer",
     description: "Explorer Agent that investigates codebases, reads documentation, and researches library usage via Context7 and Exa",
-    model: "claude-opus-4.6",
+    model: "claude-sonnet-4.6",
     tools: ["read", "write", "grep", "glob", "@context7", "@exa", "@github-grep"],
     allowedTools: ["read", "grep", "glob", "@context7", "@exa", "@github-grep"],
     useLegacyMcpJson: false,
@@ -316,7 +321,7 @@ jq -n \
   '{
     name: "simplifier",
     description: "Code Simplifier Agent that refines code for clarity, consistency, and maintainability while preserving functionality",
-    model: "claude-opus-4.6",
+    model: "claude-opus-4.7",
     tools: ["read", "write", "grep", "glob", "shell", "@git"],
     allowedTools: ["shell", "@git"],
     useLegacyMcpJson: false,
@@ -364,10 +369,10 @@ jq -n \
   --arg home_kiro "${HOME_DIR}/.kiro" \
   '{
     name: "tester",
-    description: "Test Engineer Agent that designs test suites, writes tests, analyzes coverage gaps, and verifies code changes",
-    model: "claude-opus-4.6",
-    tools: ["read", "write", "code", "grep", "glob", "shell"],
-    allowedTools: ["shell", "code", "grep", "glob"],
+    description: "Verification Agent that runs and evaluates test results, browser evidence, coverage gaps, and residual risk for code changes",
+    model: "claude-opus-4.7",
+    tools: ["read", "write", "grep", "glob", "shell"],
+    allowedTools: ["shell", "grep", "glob"],
     toolsSettings: {
       grep: {
         allowedPaths: ["./"]
@@ -379,7 +384,23 @@ jq -n \
         allowedPaths: ["./", $home_kiro]
       },
       write: {
-        allowedPaths: ["./"]
+        allowedPaths: ["./.plan"]
+      },
+      shell: {
+        allowedCommands: [
+          "rtk pnpm[[:space:]]+(?:test|typecheck|lint|build)(?:[[:space:]].*)?",
+          "rtk pnpm[[:space:]]+run[[:space:]]+(?:test|typecheck|lint|build)(?:[[:space:]].*)?",
+          "rtk npm[[:space:]]+run[[:space:]]+(?:test|typecheck|lint|build)(?:[[:space:]].*)?",
+          "rtk yarn[[:space:]]+(?:test|typecheck|lint|build)(?:[[:space:]].*)?",
+          "rtk bun[[:space:]]+(?:test|run[[:space:]]+(?:test|typecheck|lint|build))(?:[[:space:]].*)?",
+          "rtk agent-browser(?:[[:space:]].*)?",
+          "rtk npx[[:space:]]+agent-browser(?:[[:space:]].*)?",
+          "rtk cat .*",
+          "rtk sed .*",
+          "rtk head .*"
+        ],
+        autoAllowReadonly: true,
+        denyByDefault: true
       },
     },
     useLegacyMcpJson: false,
@@ -391,7 +412,7 @@ jq -n \
     ],
     prompt: $prompt
   }' > "$AGENTS_DIR/tester.json"
-inject_developer_plan_hook "$AGENTS_DIR/tester.json"
+inject_plan_folder_write_hook "$AGENTS_DIR/tester.json"
 inject_rtk_hook "$AGENTS_DIR/tester.json"
 inject_rtk_spawn_hook "$AGENTS_DIR/tester.json"
 inject_caveman_hook "$AGENTS_DIR/tester.json"
@@ -405,7 +426,7 @@ jq -n \
   '{
     name: "debugger",
     description: "Debugger Agent that investigates user-reported issues, confirms root causes, and produces investigation reports",
-    model: "claude-opus-4.6",
+    model: "claude-opus-4.7",
     tools: ["read", "write", "glob", "grep", "shell"],
     allowedTools: ["shell"],
     toolsSettings: {
@@ -444,7 +465,7 @@ jq -n \
   '{
     name: "planner",
     description: "Planner Agent that analyzes context and produces structured execution plans",
-    model: "claude-opus-4.6",
+    model: "claude-opus-4.7",
     tools: ["read", "write", "grep", "glob", "shell"],
     allowedTools: [],
     useLegacyMcpJson: false,
@@ -493,7 +514,7 @@ jq -n \
   '{
     name: "code_supervisor",
     prompt: $prompt,
-    model: "claude-opus-4.6",
+    model: "claude-opus-4.7",
     description: "Coding Supervisor Agent that orchestrates and delegates tasks to specialized agents",
     tools: ["read", "write", "subagent", "todo", "thinking", "introspect", "session", "shell", "@git", "@local-fs"],
     allowedTools: ["subagent", "todo", "thinking", "introspect", "session", "@git", "@local-fs"],
@@ -568,7 +589,7 @@ jq -n \
   '{
     name: "researcher",
     description: "Research Agent that finds, analyzes, and explains academic papers using Exa",
-    model: "claude-opus-4.6",
+    model: "claude-opus-4.7",
     tools: ["*"],
     allowedTools: ["@builtin", "@exa"],
     useLegacyMcpJson: false,
@@ -594,8 +615,8 @@ jq -n \
   --arg home_kiro "${HOME_DIR}/.kiro" \
   '{
     name: "councillor-a",
-    description: "Council advisor (Opus). Read-only codebase analysis for multi-model consensus.",
-    model: "claude-opus-4.6",
+    description: "Council advisor (Claude Opus 4.7). Read-only codebase analysis for multi-model consensus.",
+    model: "claude-opus-4.7",
     tools: ["read", "grep", "glob"],
     allowedTools: ["read", "grep", "glob"],
     useLegacyMcpJson: false,
@@ -612,13 +633,13 @@ jq -n \
 inject_caveman_hook "$AGENTS_DIR/councillor-a.json"
 inject_locale_hook "$AGENTS_DIR/councillor-a.json"
 
-# --- councillor-b (Claude Sonnet) ---
+# --- councillor-b (GLM-5) ---
 jq -n \
   --arg prompt "file://${HOME_DIR}/.kiro/agents/councillor-b.md" \
   --arg home_kiro "${HOME_DIR}/.kiro" \
   '{
     name: "councillor-b",
-    description: "Council advisor (Sonnet). Read-only codebase analysis for multi-model consensus.",
+    description: "Council advisor (GLM-5). Read-only codebase analysis for multi-model consensus.",
     model: "glm-5",
     tools: ["read", "grep", "glob"],
     allowedTools: ["read", "grep", "glob"],
@@ -642,8 +663,8 @@ jq -n \
   --arg home_kiro "${HOME_DIR}/.kiro" \
   '{
     name: "councillor-c",
-    description: "Council advisor. Read-only codebase analysis for multi-model consensus.",
-    model: "claude-opus-4.5",
+    description: "Council advisor (DeepSeek 3.2). Read-only codebase analysis for multi-model consensus.",
+    model: "deepseek-3.2",
     tools: ["read", "grep", "glob"],
     allowedTools: ["read", "grep", "glob"],
     useLegacyMcpJson: false,
@@ -667,7 +688,7 @@ jq -n \
   '{
     name: "council-master",
     description: "Council synthesis engine. Reviews councillor responses and produces the final answer.",
-    model: "claude-opus-4.6",
+    model: "claude-opus-4.7",
     tools: ["read", "grep", "glob"],
     allowedTools: ["read", "grep", "glob"],
     useLegacyMcpJson: false,

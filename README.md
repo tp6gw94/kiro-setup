@@ -61,7 +61,7 @@ kiro-cli chat   # defaults to code_supervisor agent
 | designer | Figma design extraction | claude-opus-4.6 | `ctrl+shift+f` |
 | explorer | Codebase investigation & library/API research | claude-opus-4.6 | `ctrl+e` |
 | simplifier | Code refinement | claude-opus-4.6 | `ctrl+shift+s` |
-| tester | Test suite design | claude-opus-4.6 | `ctrl+t` |
+| tester | Verification evidence and risk analysis | claude-opus-4.6 | `ctrl+t` |
 | debugger | Root cause investigation | claude-opus-4.6 | `ctrl+b` |
 | planner | Execution plans | claude-opus-4.6 | `ctrl+p` |
 | researcher | Academic paper search | claude-opus-4.6 | `ctrl+shift+r` |

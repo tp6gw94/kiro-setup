@@ -1,6 +1,6 @@
 ---
 name: councillor-c
-description: Council advisor using Claude Opus 4.5. Read-only codebase analysis for multi-model consensus.
+description: Council advisor using DeepSeek 3.2. Read-only codebase analysis for multi-model consensus.
 ---
 
 <Role>

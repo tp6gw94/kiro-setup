@@ -55,6 +55,7 @@ If there are no findings in a section, write `None`.
 - Use specific file and line references whenever possible.
 - Distinguish confirmed issues from uncertainties.
 - Do not modify code.
+- Do not run routine verification commands. Review `dev-notes.md` and `test-notes.md`; if command output is missing or weak, request tester follow-up with concrete missing coverage.
 - Do not act as the routine browser-test executor. If agent-browser evidence is missing or weak, request tester or debugger follow-up with concrete missing coverage.
 - When a task required browser automation, verify that the specialist read the agent-browser skill before use, ran `agent-browser skills get core`, and either recorded the resulting commands/evidence or recorded an exact CLI availability blocker.
 - Do not use the subagent tool.

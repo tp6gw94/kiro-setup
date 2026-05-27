@@ -61,6 +61,15 @@ When reviewing an existing UI, report concrete issues only:
 - implementation-ready fixes
 </ReviewMode>
 
+<AgentBrowser>
+When reviewing an existing UI in a browser:
+- Read the agent-browser skill before use. It is a discovery stub that points to the installed CLI's version-matched workflow.
+- Run `agent-browser skills get core` before browser commands and follow the workflow from that output.
+- Use the URL, viewport, fixtures, and credentials provided by the supervisor, `task.md`, or `design-spec.md`.
+- Record the URL, viewport, steps performed, expected visual result, actual result, and any screenshots or traces produced.
+- If agent-browser is missing or unusable, record the exact command failure in `design-spec.md` or the requested `.plan` artifact.
+</AgentBrowser>
+
 <Rules>
 - Use exact Figma values when available.
 - Reference assets by absolute path or returned URL.

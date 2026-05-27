@@ -132,9 +132,27 @@ if ! jq -e \
   exit 1
 fi
 
-for name in developer tester simplifier; do
+for name in developer simplifier; do
   require_active_plan_writer "$name"
 done
+
+require_plan_only_writer "tester"
+
+require_jq "$AGENTS_DIR/tester.json" \
+  '(.tools | index("code") | not) and (.allowedTools | index("code") | not)' \
+  "tester must evaluate verification evidence without code-editing tools"
+
+require_jq "$AGENTS_DIR/tester.json" \
+  '(.toolsSettings.shell.allowedCommands | any(. == "rtk pnpm[[:space:]]+(?:test|typecheck|lint|build)(?:[[:space:]].*)?")) and
+   (.toolsSettings.shell.allowedCommands | any(. == "rtk pnpm[[:space:]]+run[[:space:]]+(?:test|typecheck|lint|build)(?:[[:space:]].*)?")) and
+   (.toolsSettings.shell.allowedCommands | any(. == "rtk npm[[:space:]]+run[[:space:]]+(?:test|typecheck|lint|build)(?:[[:space:]].*)?")) and
+   (.toolsSettings.shell.allowedCommands | any(. == "rtk yarn[[:space:]]+(?:test|typecheck|lint|build)(?:[[:space:]].*)?")) and
+   (.toolsSettings.shell.allowedCommands | any(. == "rtk bun[[:space:]]+(?:test|run[[:space:]]+(?:test|typecheck|lint|build))(?:[[:space:]].*)?")) and
+   (.toolsSettings.shell.allowedCommands | any(. == "rtk agent-browser(?:[[:space:]].*)?")) and
+   (.toolsSettings.shell.allowedCommands | any(. == "rtk npx[[:space:]]+agent-browser(?:[[:space:]].*)?")) and
+   .toolsSettings.shell.autoAllowReadonly == true and
+   .toolsSettings.shell.denyByDefault == true' \
+  "tester shell allowlist must permit verification commands and agent-browser only behind denyByDefault"
 
 for name in developer reviewer explorer simplifier tester debugger planner code_supervisor; do
   require_jq "$AGENTS_DIR/$name.json" \
@@ -185,15 +203,53 @@ for name in reviewer designer explorer simplifier tester debugger; do
 done
 
 require_jq "$AGENTS_DIR/reviewer.json" \
-  '(.toolsSettings.shell.allowedCommands | any(. == "rtk agent-browser(?:[[:space:]].*)?")) and (.toolsSettings.shell.allowedCommands | any(. == "rtk npx[[:space:]]+agent-browser(?:[[:space:]].*)?")) and (.toolsSettings.shell.allowedCommands | all(test("playwright-cli") | not))' \
-  "reviewer shell allowlist must use agent-browser instead of playwright-cli"
+  '(.toolsSettings.shell.allowedCommands | any(. == "rtk git[[:space:]]+(?:status|diff|show|log|rev-parse|merge-base)(?:[[:space:]].*)?")) and
+   (.toolsSettings.shell.allowedCommands | all(test("test|typecheck|lint|build|agent-browser|playwright-cli") | not)) and
+   .toolsSettings.shell.denyByDefault == true' \
+  "reviewer shell allowlist must stay review-focused and exclude routine verification/browser commands"
 
-for name in code_supervisor planner tester debugger reviewer; do
+require_jq "$AGENTS_DIR/designer.json" \
+  '(.tools | index("shell")) and
+   (.allowedTools | index("shell")) and
+   (.toolsSettings.shell.allowedCommands | any(. == "rtk agent-browser(?:[[:space:]].*)?")) and
+   (.toolsSettings.shell.allowedCommands | any(. == "rtk npx[[:space:]]+agent-browser(?:[[:space:]].*)?")) and
+   .toolsSettings.shell.denyByDefault == true' \
+  "designer must have gated agent-browser shell access for UI review"
+
+for name in code_supervisor planner tester debugger reviewer designer; do
   prompt="$PROMPT_DIR/$name.md"
   require_prompt_contains "$prompt" "agent-browser" "$name prompt must route browser automation through agent-browser"
   require_prompt_contains "$prompt" "agent-browser skill" "$name prompt must tell agents to read the agent-browser skill before use"
   require_prompt_not_contains "$prompt" "playwright-cli\\|Playwright" "$name prompt must not mention Playwright after agent-browser migration"
 done
+
+require_prompt_contains "$PROMPT_DIR/planner.md" "Plan verification outcomes and commands, not tester-owned test implementation" \
+  "planner must plan verification outcomes without assigning tester-owned test implementation"
+require_prompt_contains "$PROMPT_DIR/code_supervisor.md" "Do not ask \`tester\` to author test implementations" \
+  "code_supervisor must keep test implementation assigned away from tester"
+require_prompt_contains "$ROOT/skills/supervisor-workflow/SKILL.md" "Do not ask \`tester\` to author test implementations" \
+  "supervisor workflow skill must keep test implementation assigned away from tester"
+require_prompt_contains "$PROMPT_DIR/tester.md" "You never author test implementations" \
+  "tester must recommend missing tests instead of authoring test implementations"
+require_prompt_not_contains "$ROOT/skills/supervisor-workflow/SKILL.md" "playwright-cli\\|Playwright" \
+  "supervisor workflow skill must use agent-browser wording instead of Playwright"
+
+require_prompt_contains "$PROMPT_DIR/councillor-a.md" "Claude Opus 4.7" \
+  "councillor-a prompt metadata must match generated model"
+require_prompt_contains "$PROMPT_DIR/councillor-b.md" "GLM-5" \
+  "councillor-b prompt metadata must match generated model"
+require_prompt_contains "$PROMPT_DIR/councillor-c.md" "DeepSeek 3.2" \
+  "councillor-c prompt metadata must match generated model"
+
+require_jq "$AGENTS_DIR/councillor-b.json" \
+  '.description | test("GLM-5")' \
+  "councillor-b generated description must match generated model"
+require_jq "$AGENTS_DIR/councillor-a.json" \
+  '.description | test("Claude Opus 4.7")' \
+  "councillor-a generated description must match generated model"
+require_jq "$AGENTS_DIR/councillor-c.json" \
+  '.description | test("DeepSeek 3.2")' \
+  "councillor-c generated description must match generated model"
 
 if [[ ! -f "$ROOT/skills/debug-hypothesis/SKILL.md" ]]; then
   echo "debug-hypothesis skill must exist" >&2

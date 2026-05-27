@@ -12,6 +12,7 @@ READ_HOOK="$HOME/.kiro/hooks/code_supervisor/validate-read-allowed-paths.js"
 PHASE_HOOK="$HOME/.kiro/hooks/code_supervisor/phase-reminder.sh"
 RTK_HOOK="$HOME/.kiro/hooks/shell/rtk-rewrite.js"
 LOCAL_RM_HOOK="$HOME/.kiro/hooks/shell/validate-local-rm.js"
+LOCAL_FS_SERVER="$HOME/.kiro/mcp/local-fs/server.mjs"
 DISALLOWED_AGENTS_SKILLS_URI="skill://$HOME/.agents/skills/**/SKILL.md"
 DISALLOWED_AGENTS_SKILLS_DIR="$HOME/.agents/skills"
 PROMPT_DIR="$ROOT/agents"
@@ -124,9 +125,9 @@ if ! jq -e --arg hook "$SUPERVISOR_PLAN_HOOK" \
 fi
 
 if ! jq -e \
-  '(.tools | index("shell") | not) and (.allowedTools | index("shell") | not) and (.toolsSettings | has("shell") | not)' \
+  '(.tools | index("shell")) and (.allowedTools | index("shell") | not) and .toolsSettings.shell.allowedCommands == ["rkt cmux .*"] and .toolsSettings.shell.denyByDefault == true' \
   "$AGENTS_DIR/code_supervisor.json" >/dev/null; then
-  echo "code_supervisor must not expose shell; verification belongs to tester/reviewer artifacts" >&2
+  echo "code_supervisor must keep the cmux-only shell tool gated out of allowedTools" >&2
   jq '{name, tools, allowedTools, toolsSettings, hooks}' "$AGENTS_DIR/code_supervisor.json" >&2
   exit 1
 fi
@@ -156,6 +157,26 @@ done
 require_jq "$AGENTS_DIR/developer.json" \
   'any(.hooks.preToolUse[]?; .command == "'"$LOCAL_RM_HOOK"'" and .matcher == "shell")' \
   "developer must use the local rm validation hook"
+
+require_jq "$AGENTS_DIR/developer.json" \
+  '(.tools | index("@local-fs")) and (.allowedTools | index("@local-fs"))' \
+  "developer must expose the local-fs MCP tools"
+
+require_jq "$AGENTS_DIR/developer.json" \
+  '.mcpServers."local-fs".type == "stdio" and .mcpServers."local-fs".command == "node" and .mcpServers."local-fs".args == ["'"$LOCAL_FS_SERVER"'"]' \
+  "developer must configure the local-fs MCP server"
+
+require_jq "$AGENTS_DIR/developer.json" \
+  'all(.toolsSettings.shell.allowedCommands[]?; . != "rtk rm .*")' \
+  "developer shell allowlist must route deletion through local-fs instead of rtk rm"
+
+require_jq "$AGENTS_DIR/code_supervisor.json" \
+  '(.tools | index("@local-fs")) and (.allowedTools | index("@local-fs"))' \
+  "code_supervisor must expose the local-fs MCP tools"
+
+require_jq "$AGENTS_DIR/code_supervisor.json" \
+  '.mcpServers."local-fs".type == "stdio" and .mcpServers."local-fs".command == "node" and .mcpServers."local-fs".args == ["'"$LOCAL_FS_SERVER"'"]' \
+  "code_supervisor must configure the local-fs MCP server"
 
 for name in reviewer designer explorer simplifier tester debugger; do
   require_jq "$AGENTS_DIR/$name.json" \

@@ -18,6 +18,7 @@ mkdir -p \
   "$KIRO_DIR/hooks/plan_writers" \
   "$KIRO_DIR/hooks/source_writing" \
   "$KIRO_DIR/hooks/shell" \
+  "$KIRO_DIR/mcp/local-fs" \
   "$KIRO_DIR/skills/cartography/scripts" \
   "$KIRO_DIR/skills/council-session"
 
@@ -31,6 +32,7 @@ inject_rtk_hook() {
 }
 
 DEVELOPER_RM_HOOK="$KIRO_DIR/hooks/shell/validate-local-rm.js"
+LOCAL_FS_SERVER="$KIRO_DIR/mcp/local-fs/server.mjs"
 inject_developer_rm_hook() {
   local agent_file="$1"
   jq --arg hook "$DEVELOPER_RM_HOOK" \
@@ -112,12 +114,13 @@ jq -n \
   --arg prompt "file://${HOME_DIR}/.kiro/agents/developer.md" \
   --arg skills "$KIRO_SKILLS_URI" \
   --arg home_kiro "${HOME_DIR}/.kiro" \
+  --arg local_fs_server "$LOCAL_FS_SERVER" \
   '{
     name: "developer",
     description: "Developer Agent that writes high-quality, maintainable code based on specifications",
     model: "claude-opus-4.6",
-    tools: ["read", "write", "code", "glob", "grep", "shell", "todo"],
-    allowedTools: ["code", "todo"],
+    tools: ["read", "write", "code", "glob", "grep", "shell", "todo", "@local-fs"],
+    allowedTools: ["code", "todo", "@local-fs"],
     useLegacyMcpJson: false,
     toolsSettings: {
       glob: {
@@ -139,8 +142,7 @@ jq -n \
           "rtk tsc(?:[[:space:]].*)?",
           "rtk cat .*",
           "rtk sed .*",
-          "rtk head .*",
-          "rtk rm .*"
+          "rtk head .*"
         ],
         autoAllowReadonly: true,
         denyByDefault: true
@@ -154,6 +156,13 @@ jq -n \
       "skill://.kiro/skills/*/SKILL.md",
       $skills
     ],
+    mcpServers: {
+      "local-fs": {
+        type: "stdio",
+        command: "node",
+        args: [$local_fs_server]
+      }
+    },
     prompt: $prompt
   }' > "$AGENTS_DIR/developer.json"
 inject_developer_plan_hook "$AGENTS_DIR/developer.json"
@@ -480,13 +489,14 @@ jq -n \
   --arg validate_write "${HOME_DIR}/.kiro/hooks/code_supervisor/validate-supervisor-plan-write.js" \
   --arg validate_read "${HOME_DIR}/.kiro/hooks/code_supervisor/validate-read-allowed-paths.js" \
   --arg home_kiro "${HOME_DIR}/.kiro" \
+  --arg local_fs_server "$LOCAL_FS_SERVER" \
   '{
     name: "code_supervisor",
     prompt: $prompt,
     model: "claude-opus-4.6",
     description: "Coding Supervisor Agent that orchestrates and delegates tasks to specialized agents",
-    tools: ["read", "write", "subagent", "todo", "thinking", "introspect", "session", "shell", "@git"],
-    allowedTools: ["subagent", "todo", "thinking", "introspect", "session", "@git"],
+    tools: ["read", "write", "subagent", "todo", "thinking", "introspect", "session", "shell", "@git", "@local-fs"],
+    allowedTools: ["subagent", "todo", "thinking", "introspect", "session", "@git", "@local-fs"],
     useLegacyMcpJson: false,
     toolsSettings: {
       shell: {
@@ -510,6 +520,11 @@ jq -n \
       $skills
     ],
     mcpServers: {
+      "local-fs": {
+        type: "stdio",
+        command: "node",
+        args: [$local_fs_server]
+      },
       git: {
         type: "stdio",
         command: "uvx",
@@ -669,11 +684,12 @@ inject_locale_hook "$AGENTS_DIR/council-master.json"
 # --- mcp.json ---
 jq -n \
   --arg exa_key "${EXA_API_KEY}" \
-  --arg kiro_executor "${KIRO_DIR}/mcp/kiro-executor/server.mjs" \
+  --arg local_fs_server "$LOCAL_FS_SERVER" \
   '{
     mcpServers: {
       git: { command: "uvx", args: ["mcp-server-git"], env: { GIT_CONFIG_GLOBAL: "/dev/null" } },
       context7: { command: "npx", args: ["-y", "@upstash/context7-mcp"] },
+      "local-fs": { command: "node", args: [$local_fs_server] },
       "chrome-devtools": { command: "npx", args: ["-y", "chrome-devtools-mcp@latest"], autoApprove: ["take_screenshot", "list_pages"], disabled: true },
       "figma-developer-mcp": { command: "npx", args: ["-y", "figma-developer-mcp", "--stdio"] },
       exa: {
@@ -696,6 +712,8 @@ for f in developer reviewer designer explorer simplifier tester debugger planner
 done
 echo "  Settings:"
 echo "    ✓ $KIRO_DIR/settings/mcp.json"
+echo "  MCP tools:"
+echo "    ✓ $KIRO_DIR/mcp/local-fs/server.mjs"
 echo "  Hooks (managed separately in hooks/):"
 for f in caveman.sh locale.sh code_supervisor/phase-reminder.sh code_supervisor/cmux-notify.sh code_supervisor/validate-read-allowed-paths.js code_supervisor/validate-supervisor-plan-write.js planner/validate-planner-plan-write.js plan_writers/validate-artifact-plan-write.js source_writing/validate-developer-plan.js shell/rtk-rewrite.js shell/rtk-rules.sh shell/validate-local-rm.js; do
   if [ -f "$KIRO_DIR/hooks/$f" ]; then

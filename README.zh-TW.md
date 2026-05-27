@@ -234,6 +234,7 @@ sudo ln -sf "/Applications/cmux.app/Contents/Resources/bin/cmux" /usr/local/bin/
 |--------|------|-----------|------|
 | `git` | stdio | `uvx mcp-server-git` | Git 操作 |
 | `context7` | stdio | `npx -y @upstash/context7-mcp` | 函式庫文件查詢 |
+| `local-fs` | stdio | `node ~/.kiro/mcp/local-fs/server.mjs` | `developer` / `code_supervisor` 可用的 `rm` / `mkdir` 工具，限制在目前工作目錄內 |
 | `figma-developer-mcp` | stdio | `npx -y figma-developer-mcp --stdio` | Figma 設計擷取 |
 | [`exa`](https://github.com/exa-labs/exa-mcp-server) | remote | `https://mcp.exa.ai/mcp?exaApiKey=...` | 網路搜尋 & 學術論文 |
 | `github-grep` | remote | `https://mcp.grep.app` | GitHub 程式碼搜尋 |

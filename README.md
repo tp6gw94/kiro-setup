@@ -156,6 +156,7 @@ The `planner/open-task-markdown.js` hook opens the first successful `.plan/<task
 |--------|-----------|-------------|
 | git | `uvx mcp-server-git` | Git operations |
 | context7 | `npx @upstash/context7-mcp` | Library documentation lookup |
+| local-fs | `node ~/.kiro/mcp/local-fs/server.mjs` | `rm` and `mkdir` tools for developer/code_supervisor, constrained to the current working directory |
 | figma-developer-mcp | `npx figma-developer-mcp` | Figma design extraction |
 | [exa](https://github.com/exa-labs/exa-mcp-server) | Remote URL | Web search and research |
 | github-grep | Remote URL (`mcp.grep.app`) | GitHub code search |

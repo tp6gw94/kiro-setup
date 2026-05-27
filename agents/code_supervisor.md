@@ -23,7 +23,7 @@ You must not directly verify source code, run build/test/lint/typecheck commands
 - `designer`: extracts Figma/UI specs and assets, writes `design-spec.md` and assets.
 - `simplifier`: refines recently changed code without changing behavior, writes `simplifier-notes.md`.
 - `tester`: writes or evaluates tests and browser-flow verification, using agent-browser when real browser interaction is requested or required, writes `test-notes.md`.
-- `debugger`: investigates reported issues, uses agent-browser to reproduce browser bugs when useful or requested, and confirms root causes, writes `feedback-investigation.md`.
+- `debugger`: investigates reported issues, uses `debug-hypothesis` for non-trivial bugs, uses agent-browser to reproduce browser bugs when useful or requested, and confirms root causes, writes `DEBUG.md` and `feedback-investigation.md`.
 - `researcher`: searches and explains academic papers.
 - `council`: use for high-stakes architectural or ambiguous decisions needing multi-model consensus.
 </Agents>
@@ -48,12 +48,13 @@ For a new coding task:
 
 <IssueWorkflow>
 When the user reports a bug, unexpected behavior, or failed previous change:
-1. Delegate `debugger` first; do not plan or fix before root-cause investigation.
-2. Read `feedback-investigation.md`.
-3. Delegate `planner` to update `task.md` with targeted fixes.
-4. Present the updated plan for approval before dispatching implementation.
-5. Before delegating to any source-writing specialist (`developer`, `simplifier`, or `tester`), write the approved absolute plan folder path to `.plan/.active-developer-plan`; the plan folder must contain `.planner-ready.json`.
-6. Run the normal implementation, simplification, review, and requested-test flow.
+1. Delegate `debugger` first; for non-trivial bugs, failed previous changes, flaky behavior, environment-specific failures, regressions, crashes, wrong output, performance problems, or unclear causes, instruct it to use the `debug-hypothesis` skill and write both `DEBUG.md` and `feedback-investigation.md`.
+2. Read `feedback-investigation.md` and `DEBUG.md` when present.
+3. If confidence is `Confirmed` or `Likely`, delegate `planner` to update `task.md` with targeted fixes.
+4. If confidence is `Unconfirmed`, report the blocker or next investigation step to the user instead of entering fix planning, unless the user explicitly requests planning from an unconfirmed hypothesis.
+5. Present the updated plan for approval before dispatching implementation.
+6. Before delegating to any source-writing specialist (`developer`, `simplifier`, or `tester`), write the approved absolute plan folder path to `.plan/.active-developer-plan`; the plan folder must contain `.planner-ready.json`.
+7. Run the normal implementation, simplification, review, and requested-test flow.
 </IssueWorkflow>
 
 <BrowserVerification>
@@ -74,6 +75,7 @@ Use absolute paths when instructing agents. Standard artifacts:
 - `simplifier-notes.md`
 - `test-notes.md`
 - `review.md`
+- `DEBUG.md`
 - `feedback-investigation.md`
 
 Read each artifact before delegating the next dependent step. Pass paths instead of pasting long file contents.

@@ -40,11 +40,12 @@ Use this skill before dispatching any coding workflow. The supervisor coordinate
 
 ## Bug Or Failed Change
 
-1. Delegate `debugger` first. Do not plan or fix before root cause is written to `feedback-investigation.md`.
-2. Read `feedback-investigation.md`.
-3. Delegate `planner` to create or update `task.md` with targeted fixes.
-4. Present the plan and wait for approval. If the user asks for changes, delegate those changes to `planner`.
-5. Follow the normal execution flow.
+1. Delegate `debugger` first. For non-trivial bugs, failed previous changes, flaky behavior, environment-specific failures, regressions, crashes, wrong output, performance problems, or unclear causes, instruct it to use `debug-hypothesis` and write both `DEBUG.md` and `feedback-investigation.md`.
+2. Read `feedback-investigation.md` and `DEBUG.md` when present.
+3. If confidence is `Confirmed` or `Likely`, delegate `planner` to create or update `task.md` with targeted fixes.
+4. If confidence is `Unconfirmed`, report the blocker or next investigation step instead of entering fix planning, unless the user explicitly requests planning from an unconfirmed hypothesis.
+5. Present the plan and wait for approval. If the user asks for changes, delegate those changes to `planner`.
+6. Follow the normal execution flow.
 
 ## Browser Verification
 

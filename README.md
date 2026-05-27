@@ -1,6 +1,6 @@
 # Kiro CLI Configuration
 
-Multi-agent AI coding orchestrator powered by Kiro CLI. Features 14 specialized agents, 11 custom hooks, 24 skills, and a code-gen config pipeline.
+Multi-agent AI coding orchestrator powered by Kiro CLI. Features 14 specialized agents, 11 custom hooks, 25 skills, and a code-gen config pipeline.
 
 ## Architecture Overview
 
@@ -116,6 +116,7 @@ RTK (Rust Token Killer) is a CLI proxy that optimizes shell command output for t
 |-------|-------------|
 | cartography | Generate hierarchical codemaps for unfamiliar repositories |
 | council-session | Multi-model consensus via subagent DAG |
+| debug-hypothesis | Hypothesis-driven debugger investigations |
 | simplifier | Code refinement and complexity reduction |
 | get-code-context-exa | Code context search via Exa (GitHub, StackOverflow, docs) |
 | web-search-advanced-research-paper-exa | Academic paper search via Exa |
@@ -190,7 +191,8 @@ The `planner/open-task-markdown.js` hook opens the first successful `.plan/<task
 | `simplifier-notes.md` | Simplifier's refinement notes |
 | `test-notes.md` | Tester's test plan |
 | `review.md` | Reviewer's code review |
-| `feedback-investigation.md` | Debugger's investigation |
+| `DEBUG.md` | Debugger's hypothesis trail for non-trivial bug investigations |
+| `feedback-investigation.md` | Debugger's planner-facing investigation summary |
 
 ## Settings
 

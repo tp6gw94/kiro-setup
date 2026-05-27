@@ -174,6 +174,20 @@ for name in code_supervisor planner tester debugger reviewer; do
   require_prompt_not_contains "$prompt" "playwright-cli\\|Playwright" "$name prompt must not mention Playwright after agent-browser migration"
 done
 
+if [[ ! -f "$ROOT/skills/debug-hypothesis/SKILL.md" ]]; then
+  echo "debug-hypothesis skill must exist" >&2
+  exit 1
+fi
+
+require_prompt_contains "$PROMPT_DIR/debugger.md" "debug-hypothesis" "debugger must use the debug-hypothesis skill for non-trivial bugs"
+require_prompt_contains "$PROMPT_DIR/debugger.md" "DEBUG.md" "debugger must write DEBUG.md for hypothesis-driven investigations"
+require_prompt_contains "$PROMPT_DIR/debugger.md" "feedback-investigation.md" "debugger must write feedback-investigation.md for planner-facing investigation output"
+
+require_prompt_contains "$PROMPT_DIR/code_supervisor.md" "debug-hypothesis" "code_supervisor must delegate non-trivial bug investigations with debug-hypothesis"
+require_prompt_contains "$PROMPT_DIR/code_supervisor.md" "DEBUG.md" "code_supervisor must expect DEBUG.md from debugger"
+require_prompt_contains "$ROOT/skills/supervisor-workflow/SKILL.md" "debug-hypothesis" "supervisor workflow skill must require debug-hypothesis for non-trivial bugs"
+require_prompt_contains "$ROOT/skills/supervisor-workflow/SKILL.md" "DEBUG.md" "supervisor workflow skill must expect DEBUG.md from debugger"
+
 require_no_file "$AGENTS_DIR/librarian.json" "librarian.json should not be generated after merging librarian into explorer"
 
 require_jq "$AGENTS_DIR/code_supervisor.json" \

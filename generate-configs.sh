@@ -490,7 +490,7 @@ jq -n \
     useLegacyMcpJson: false,
     toolsSettings: {
       shell: {
-        allowedCommands: ["cmux markdown .*", "mkdir -p ./.plan/.*"],
+        allowedCommands: ["rkt cmux .*"],
         denyByDefault: true
       },
       write: {

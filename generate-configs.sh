@@ -281,7 +281,10 @@ jq -n \
       },
       exa: {
         type: "remote",
-        url: ("https://mcp.exa.ai/mcp?exaApiKey=" + $exa_key)
+        url: "https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa,web_search_advanced_exa",
+        headers: {
+          "x-api-key": $exa_key
+        }
       },
       "github-grep": {
         type: "remote",
@@ -559,7 +562,10 @@ jq -n \
     mcpServers: {
       exa: {
         type: "remote",
-        url: ("https://mcp.exa.ai/mcp?exaApiKey=" + $exa_key)
+        url: "https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa,web_search_advanced_exa",
+        headers: {
+          "x-api-key": $exa_key
+        }
       }
     },
     prompt: $prompt
@@ -670,8 +676,13 @@ jq -n \
       context7: { command: "npx", args: ["-y", "@upstash/context7-mcp"] },
       "chrome-devtools": { command: "npx", args: ["-y", "chrome-devtools-mcp@latest"], autoApprove: ["take_screenshot", "list_pages"], disabled: true },
       "figma-developer-mcp": { command: "npx", args: ["-y", "figma-developer-mcp", "--stdio"] },
-      "kiro-executor": { command: "node", args: [$kiro_executor] },
-      exa: { url: ("https://mcp.exa.ai/mcp?exaApiKey=" + $exa_key), autoApprove: ["web_search_exa"] },
+      exa: {
+        type: "remote",
+        url: "https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa,web_search_advanced_exa",
+        headers: {
+          "x-api-key": $exa_key
+        }
+      },
       "github-grep": { url: "https://mcp.grep.app" }
     }
   }' > "$KIRO_DIR/settings/mcp.json"

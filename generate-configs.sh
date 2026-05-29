@@ -118,7 +118,7 @@ jq -n \
   '{
     name: "developer",
     description: "Developer Agent that writes high-quality, maintainable code based on specifications",
-    model: "claude-opus-4.7",
+    model: "claude-opus-4.8",
     tools: ["read", "write", "code", "glob", "grep", "shell", "todo", "@local-fs"],
     allowedTools: ["code", "todo", "@local-fs"],
     useLegacyMcpJson: false,
@@ -179,7 +179,7 @@ jq -n \
   --arg home_kiro "${HOME_DIR}/.kiro" \
   '{
     name: "reviewer",
-    model: "claude-opus-4.7",
+    model: "claude-opus-4.8",
     tools: ["read", "write", "grep", "glob", "shell"],
     allowedTools: [],
     toolsSettings: {
@@ -227,7 +227,7 @@ jq -n \
   '{
     name: "designer",
     description: "Designer Agent that reads Figma designs and extracts design specifications for implementation",
-    model: "claude-opus-4.7",
+    model: "claude-opus-4.8",
     tools: ["read", "write", "shell", "@figma-developer-mcp"],
     allowedTools: ["shell", "@figma-developer-mcp"],
     useLegacyMcpJson: false,
@@ -321,7 +321,7 @@ jq -n \
   '{
     name: "simplifier",
     description: "Code Simplifier Agent that refines code for clarity, consistency, and maintainability while preserving functionality",
-    model: "claude-opus-4.7",
+    model: "claude-opus-4.8",
     tools: ["read", "write", "grep", "glob", "shell", "@git"],
     allowedTools: ["shell", "@git"],
     useLegacyMcpJson: false,
@@ -370,7 +370,7 @@ jq -n \
   '{
     name: "tester",
     description: "Verification Agent that runs and evaluates test results, browser evidence, coverage gaps, and residual risk for code changes",
-    model: "claude-opus-4.7",
+    model: "claude-opus-4.8",
     tools: ["read", "write", "grep", "glob", "shell"],
     allowedTools: ["shell", "grep", "glob"],
     toolsSettings: {
@@ -426,7 +426,7 @@ jq -n \
   '{
     name: "debugger",
     description: "Debugger Agent that investigates user-reported issues, confirms root causes, and produces investigation reports",
-    model: "claude-opus-4.7",
+    model: "claude-opus-4.8",
     tools: ["read", "write", "glob", "grep", "shell"],
     allowedTools: ["shell"],
     toolsSettings: {
@@ -465,7 +465,7 @@ jq -n \
   '{
     name: "planner",
     description: "Planner Agent that analyzes context and produces structured execution plans",
-    model: "claude-opus-4.7",
+    model: "claude-opus-4.8",
     tools: ["read", "write", "grep", "glob", "shell"],
     allowedTools: [],
     useLegacyMcpJson: false,
@@ -514,14 +514,14 @@ jq -n \
   '{
     name: "code_supervisor",
     prompt: $prompt,
-    model: "claude-opus-4.7",
+    model: "claude-opus-4.8",
     description: "Coding Supervisor Agent that orchestrates and delegates tasks to specialized agents",
     tools: ["read", "write", "subagent", "todo", "thinking", "introspect", "session", "shell", "@git", "@local-fs"],
     allowedTools: ["subagent", "todo", "thinking", "introspect", "session", "@git", "@local-fs"],
     useLegacyMcpJson: false,
     toolsSettings: {
       shell: {
-        allowedCommands: ["rkt cmux .*"],
+        allowedCommands: ["rkt cmux .*", "cmux .*"],
         denyByDefault: true
       },
       write: {
@@ -589,7 +589,7 @@ jq -n \
   '{
     name: "researcher",
     description: "Research Agent that finds, analyzes, and explains academic papers using Exa",
-    model: "claude-opus-4.7",
+    model: "claude-opus-4.8",
     tools: ["*"],
     allowedTools: ["@builtin", "@exa"],
     useLegacyMcpJson: false,
@@ -616,7 +616,7 @@ jq -n \
   '{
     name: "councillor-a",
     description: "Council advisor (Claude Opus 4.7). Read-only codebase analysis for multi-model consensus.",
-    model: "claude-opus-4.7",
+    model: "claude-opus-4.8",
     tools: ["read", "grep", "glob"],
     allowedTools: ["read", "grep", "glob"],
     useLegacyMcpJson: false,
@@ -688,7 +688,7 @@ jq -n \
   '{
     name: "council-master",
     description: "Council synthesis engine. Reviews councillor responses and produces the final answer.",
-    model: "claude-opus-4.7",
+    model: "claude-opus-4.8",
     tools: ["read", "grep", "glob"],
     allowedTools: ["read", "grep", "glob"],
     useLegacyMcpJson: false,

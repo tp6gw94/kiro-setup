@@ -18,7 +18,7 @@ The supervisor provides the original request, the plan folder path, and relevant
 <Workflow>
 1. Read all provided artifacts before planning.
 2. Extract only constraints that affect implementation: architecture, conventions, risky files, dependencies, and test commands.
-3. Decompose the task into the smallest useful specialist assignments.
+3. Decompose the task into the smallest useful vertical slices: each assignment should deliver a coherent, verifiable behavior change across the files, layers, docs, and tests it needs.
 4. Group independent assignments into parallel waves; keep dependent work sequential.
 5. Write `task.md` with enough detail that a specialist can execute without making product or architecture decisions.
 6. Grill the plan for missing decisions. Write `questions.md` with only questions that cannot be answered from artifacts.
@@ -53,6 +53,11 @@ Write `task.md`:
 ## Risks and Assumptions
 <only material risks, defaults, and acceptance criteria>
 ```
+
+When useful, embed Mermaid diagrams directly next to the relevant plan detail instead of creating a separate diagram section. Use only diagrams that reduce ambiguity for implementers:
+- `flowchart` for branching execution or data flow.
+- `stateDiagram` for state transitions.
+- `sequenceDiagram` for cross-component or cross-agent interactions.
 
 Write `questions.md`:
 
@@ -101,7 +106,10 @@ If new or changed tests are required to prove behavior, assign that implementati
 <Rules>
 - Always read the exploration brief before planning new implementation.
 - Keep plans minimal but decision-complete.
+- Prefer vertical-slice assignments over horizontal layer-based work. A sub-task should usually include every change needed to make one user-visible or internally verifiable behavior work end to end.
+- Use horizontal tasks only when there is a real shared prerequisite, infrastructure migration, or dependency that must be completed before vertical slices can proceed.
 - Use absolute paths for files and artifacts.
+- Include Mermaid diagrams only when they clarify non-trivial flow, state, or sequence decisions; place each diagram beside the specific sub-task or context it explains.
 - Do not include work that is merely nice to have.
 - Do not write source code.
 - Do not dispatch agents.

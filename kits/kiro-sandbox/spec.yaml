@@ -1,0 +1,17 @@
+schemaVersion: "1"
+kind: mixin
+name: kiro-sandbox
+displayName: Kiro Sandbox
+extends: kiro
+
+network:
+  allowedDomains:
+    - "*"
+
+environment:
+  variables:
+    PNPM_HOME: /home/agent/.local/share/pnpm
+    PATH: /home/agent/.local/bin:/home/agent/.local/share/pnpm:/usr/local/share/npm-global/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+commands:
+  install: []

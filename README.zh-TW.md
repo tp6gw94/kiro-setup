@@ -29,6 +29,38 @@ kiro-cli chat
 
 預設回應語言是繁體中文；可在 `hooks/locale.sh` 修改。
 
+### Docker Sandbox 設定
+
+`kits/kiro-sandbox` 是此 repo 的本機 Docker Sandbox kit。它是
+`kind: mixin`，會 extend 內建的 `kiro` agent、開放 sandbox 網路存取，並設定
+global Kiro config 需要的 runtime `PATH`/`PNPM_HOME`。
+
+先用 `Dockerfile.kiro-sandbox` 建立 custom Kiro template，再載入 kit 執行
+Kiro：
+
+```bash
+./build-kiro-sandbox-template.sh kiro-sandbox-template:v1
+docker image save kiro-sandbox-template:v1 -o kiro-sandbox-template.tar
+sbx template load kiro-sandbox-template.tar
+sbx run -t kiro-sandbox-template:v1 --kit ./kits/kiro-sandbox kiro
+```
+
+build script 會執行 `sync-kit-skills.sh`，把 symlink skills 展開到 kit 的
+`files/home/.kiro/skills`，建立暫時 Docker build context，並將
+`kits/kiro-sandbox/files/home/.kiro` 複製進 image 的 `/home/agent/.kiro`。這個
+template 會 extend `docker/sandbox-templates:kiro-docker`、安裝 Node.js 24、pnpm、
+Playwright、RTK 與 uv、設定 Git identity/default branch 預設值，並將 global
+Kiro 設定 bake 到 `/home/agent/.kiro`。
+
+如果 sandbox 建立後需要 host credentials，可將支援的環境變數注入 sandbox 的
+persistent shell profile：
+
+```bash
+kits/kiro-sandbox/inject-env.sh <sandbox-name>
+```
+
+`inject-env.sh` 目前會持久化 `EXA_API_KEY` 與 `FIGMA_API_KEY`。
+
 ## 架構
 
 ```text
@@ -47,6 +79,8 @@ code_supervisor
 核心規則：
 
 - `generate-configs.sh` 生成 `agents/*.json` 與 `settings/mcp.json`。
+- `sync-kit-skills.sh` 將本機 skills 複製到 Kiro sandbox kit，並把 symlink 展開成實體目錄。
+- `build-kiro-sandbox-template.sh` 建立包含 RTK、Git config 與 generated `~/.kiro` 的 Kiro Docker Sandbox template。
 - 代理 prompt 放在 `agents/*.md`。
 - Hook 腳本放在 `hooks/`。
 - 技能放在 `skills/*/SKILL.md`。
@@ -67,6 +101,7 @@ code_supervisor
 | `debugger` | 根因調查 | `claude-opus-4.7` | `ctrl+b` | - |
 | `planner` | 結構化執行計畫 | `claude-opus-4.7` | `ctrl+p` | - |
 | `researcher` | 網路與論文研究 | `claude-opus-4.7` | `ctrl+shift+r` | `exa` |
+| `ralph` | Sandbox YOLO 實作迴圈 | `claude-opus-4.8` | - | 所有 MCP servers |
 
 ### Supervisor
 

@@ -29,6 +29,40 @@ kiro-cli chat
 
 The default response language is Traditional Chinese. Change it in `hooks/locale.sh`.
 
+### Docker Sandbox Configs
+
+`kits/kiro-sandbox` is the local Docker Sandbox kit for this repo. It is a
+`kind: mixin` kit that extends the built-in `kiro` agent, opens network access
+for the sandbox, and sets the runtime `PATH`/`PNPM_HOME` values expected by the
+global Kiro config.
+
+Build a custom Kiro template from `Dockerfile.kiro-sandbox`, then run Kiro with
+the kit loaded:
+
+```bash
+./build-kiro-sandbox-template.sh kiro-sandbox-template:v1
+docker image save kiro-sandbox-template:v1 -o kiro-sandbox-template.tar
+sbx template load kiro-sandbox-template.tar
+sbx run -t kiro-sandbox-template:v1 --kit ./kits/kiro-sandbox kiro
+```
+
+The build script runs `sync-kit-skills.sh`, expands symlinked skills into the
+kit's `files/home/.kiro/skills` tree, creates a temporary Docker build context,
+and copies `kits/kiro-sandbox/files/home/.kiro` into the image as
+`/home/agent/.kiro`. The template extends
+`docker/sandbox-templates:kiro-docker`, installs Node.js 24, pnpm, Playwright,
+RTK, and uv, configures Git identity/default branch defaults, and bakes the
+global Kiro settings into `/home/agent/.kiro`.
+
+If the sandbox needs host credentials after creation, inject the supported
+environment variables into the sandbox's persistent shell profile:
+
+```bash
+kits/kiro-sandbox/inject-env.sh <sandbox-name>
+```
+
+`inject-env.sh` currently persists `EXA_API_KEY` and `FIGMA_API_KEY`.
+
 ## Architecture
 
 ```text
@@ -47,6 +81,8 @@ code_supervisor
 Key rules:
 
 - `generate-configs.sh` generates `agents/*.json` and `settings/mcp.json`.
+- `sync-kit-skills.sh` copies local skills into the Kiro sandbox kit and expands symlinks into real directories.
+- `build-kiro-sandbox-template.sh` builds a Kiro Docker Sandbox template with RTK, Git config, and generated `~/.kiro`.
 - Agent prompts live in `agents/*.md`.
 - Hook scripts live in `hooks/`.
 - Skills live in `skills/*/SKILL.md`.
@@ -67,6 +103,7 @@ Key rules:
 | `debugger` | Root cause investigation | `claude-opus-4.7` | `ctrl+b` | - |
 | `planner` | Structured execution plans | `claude-opus-4.7` | `ctrl+p` | - |
 | `researcher` | Web and paper research | `claude-opus-4.7` | `ctrl+shift+r` | `exa` |
+| `ralph` | Sandbox YOLO implementation loop | `claude-opus-4.8` | - | all MCP servers |
 
 ### Supervisor
 

@@ -1,3 +1,4 @@
 *.json
 sessions
 .cli_bash_history
+*.tar

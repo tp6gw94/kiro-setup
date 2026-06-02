@@ -1,0 +1,48 @@
+{
+  "name": "designer",
+  "description": "Designer Agent that reads Figma designs and extracts design specifications for implementation",
+  "model": "claude-opus-4.8",
+  "tools": [
+    "*"
+  ],
+  "allowedTools": [
+    "*"
+  ],
+  "useLegacyMcpJson": false,
+  "resources": [],
+  "mcpServers": {
+    "figma-developer-mcp": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "figma-developer-mcp",
+        "--stdio"
+      ]
+    }
+  },
+  "prompt": "file:///home/agent/.kiro/agents/designer.md",
+  "hooks": {
+    "preToolUse": [
+      {
+        "command": "/home/agent/.kiro/hooks/plan_writers/validate-artifact-plan-write.js",
+        "matcher": "write"
+      },
+      {
+        "command": "/home/agent/.kiro/hooks/shell/rtk-rewrite.js",
+        "matcher": "shell"
+      }
+    ],
+    "agentSpawn": [
+      {
+        "command": "/home/agent/.kiro/hooks/shell/rtk-rules.sh"
+      },
+      {
+        "command": "/home/agent/.kiro/hooks/caveman.sh"
+      },
+      {
+        "command": "/home/agent/.kiro/hooks/locale.sh"
+      }
+    ]
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "mcpServers": {
+    "git": {
+      "command": "uvx",
+      "args": [
+        "mcp-server-git"
+      ],
+      "env": {
+        "GIT_CONFIG_GLOBAL": "/dev/null"
+      }
+    },
+    "context7": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/context7-mcp"
+      ]
+    },
+    "local-fs": {
+      "command": "node",
+      "args": [
+        "/Users/todd/.kiro/mcp/local-fs/server.mjs"
+      ]
+    },
+    "chrome-devtools": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "chrome-devtools-mcp@latest"
+      ],
+      "autoApprove": [
+        "take_screenshot",
+        "list_pages"
+      ],
+      "disabled": true
+    },
+    "figma-developer-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "figma-developer-mcp",
+        "--stdio"
+      ]
+    },
+    "exa": {
+      "type": "remote",
+      "url": "https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa,web_search_advanced_exa",
+      "headers": {
+        "x-api-key": "dummy"
+      }
+    },
+    "github-grep": {
+      "url": "https://mcp.grep.app"
+    }
+  }
+}

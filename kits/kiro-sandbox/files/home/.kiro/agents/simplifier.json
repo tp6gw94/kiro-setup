@@ -1,0 +1,61 @@
+{
+  "name": "simplifier",
+  "description": "Code Simplifier Agent that refines code for clarity, consistency, and maintainability while preserving functionality",
+  "model": "claude-opus-4.8",
+  "tools": [
+    "*"
+  ],
+  "allowedTools": [
+    "*"
+  ],
+  "useLegacyMcpJson": false,
+  "resources": [
+    "skill:///home/agent/.kiro/skills/**/SKILL.md",
+    "skill://.kiro/skills/*/SKILL.md",
+    "file://.kiro/steering/*.md"
+  ],
+  "mcpServers": {
+    "git": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "mcp-server-git"
+      ],
+      "env": {
+        "GIT_CONFIG_GLOBAL": "/dev/null"
+      }
+    }
+  },
+  "prompt": "file:///home/agent/.kiro/agents/simplifier.md",
+  "hooks": {
+    "preToolUse": [
+      {
+        "command": "/home/agent/.kiro/hooks/source_writing/validate-developer-plan.js",
+        "matcher": "write"
+      },
+      {
+        "command": "/home/agent/.kiro/hooks/source_writing/validate-developer-plan.js",
+        "matcher": "code"
+      },
+      {
+        "command": "/home/agent/.kiro/hooks/source_writing/validate-developer-plan.js",
+        "matcher": "shell"
+      },
+      {
+        "command": "/home/agent/.kiro/hooks/shell/rtk-rewrite.js",
+        "matcher": "shell"
+      }
+    ],
+    "agentSpawn": [
+      {
+        "command": "/home/agent/.kiro/hooks/shell/rtk-rules.sh"
+      },
+      {
+        "command": "/home/agent/.kiro/hooks/caveman.sh"
+      },
+      {
+        "command": "/home/agent/.kiro/hooks/locale.sh"
+      }
+    ]
+  }
+}

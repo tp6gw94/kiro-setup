@@ -1,0 +1,65 @@
+{
+  "name": "developer",
+  "description": "Developer Agent that writes high-quality, maintainable code based on specifications",
+  "model": "claude-opus-4.8",
+  "tools": [
+    "*"
+  ],
+  "allowedTools": [
+    "*"
+  ],
+  "useLegacyMcpJson": false,
+  "resources": [
+    "file://CLAUDE.md",
+    "file://.kiro/steering/*.md",
+    "file://README.md",
+    "file://package.json",
+    "skill://.kiro/skills/*/SKILL.md",
+    "skill:///home/agent/.kiro/skills/**/SKILL.md"
+  ],
+  "mcpServers": {
+    "local-fs": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "/home/agent/.kiro/mcp/local-fs/server.mjs"
+      ]
+    }
+  },
+  "prompt": "file:///home/agent/.kiro/agents/developer.md",
+  "hooks": {
+    "preToolUse": [
+      {
+        "command": "/home/agent/.kiro/hooks/source_writing/validate-developer-plan.js",
+        "matcher": "write"
+      },
+      {
+        "command": "/home/agent/.kiro/hooks/source_writing/validate-developer-plan.js",
+        "matcher": "code"
+      },
+      {
+        "command": "/home/agent/.kiro/hooks/source_writing/validate-developer-plan.js",
+        "matcher": "shell"
+      },
+      {
+        "command": "/home/agent/.kiro/hooks/shell/validate-local-rm.js",
+        "matcher": "shell"
+      },
+      {
+        "command": "/home/agent/.kiro/hooks/shell/rtk-rewrite.js",
+        "matcher": "shell"
+      }
+    ],
+    "agentSpawn": [
+      {
+        "command": "/home/agent/.kiro/hooks/shell/rtk-rules.sh"
+      },
+      {
+        "command": "/home/agent/.kiro/hooks/caveman.sh"
+      },
+      {
+        "command": "/home/agent/.kiro/hooks/locale.sh"
+      }
+    ]
+  }
+}

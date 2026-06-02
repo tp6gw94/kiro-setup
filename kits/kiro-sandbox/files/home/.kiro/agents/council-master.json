@@ -1,0 +1,45 @@
+{
+  "name": "council-master",
+  "description": "Council synthesis engine. Reviews councillor responses and produces the final answer.",
+  "model": "claude-opus-4.8",
+  "tools": [
+    "read",
+    "grep",
+    "glob"
+  ],
+  "allowedTools": [
+    "read",
+    "grep",
+    "glob"
+  ],
+  "useLegacyMcpJson": false,
+  "toolsSettings": {
+    "read": {
+      "allowedPaths": [
+        "./",
+        "/home/agent/.kiro"
+      ]
+    },
+    "grep": {
+      "allowedPaths": [
+        "./"
+      ]
+    },
+    "glob": {
+      "allowedPaths": [
+        "./"
+      ]
+    }
+  },
+  "prompt": "file:///home/agent/.kiro/agents/council-master.md",
+  "hooks": {
+    "agentSpawn": [
+      {
+        "command": "/home/agent/.kiro/hooks/caveman.sh"
+      },
+      {
+        "command": "/home/agent/.kiro/hooks/locale.sh"
+      }
+    ]
+  }
+}

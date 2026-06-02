@@ -1,0 +1,26 @@
+{
+  "name": "councillor-a",
+  "description": "Council advisor (Claude Opus 4.7). Read-only codebase analysis for multi-model consensus.",
+  "model": "claude-opus-4.8",
+  "tools": [
+    "*"
+  ],
+  "allowedTools": [
+    "*"
+  ],
+  "useLegacyMcpJson": false,
+  "resources": [
+    "file://.kiro/steering/*.md"
+  ],
+  "prompt": "file:///home/agent/.kiro/agents/councillor-a.md",
+  "hooks": {
+    "agentSpawn": [
+      {
+        "command": "/home/agent/.kiro/hooks/caveman.sh"
+      },
+      {
+        "command": "/home/agent/.kiro/hooks/locale.sh"
+      }
+    ]
+  }
+}

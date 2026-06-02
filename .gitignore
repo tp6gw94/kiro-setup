@@ -1,4 +1,5 @@
 *.json
+!kits/kiro-sandbox/files/home/.kiro/**/*.json
 sessions
 .cli_bash_history
 *.tar

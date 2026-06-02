@@ -1,0 +1,39 @@
+{
+  "name": "planner",
+  "description": "Planner Agent that analyzes context and produces structured execution plans",
+  "model": "claude-opus-4.8",
+  "tools": [
+    "*"
+  ],
+  "allowedTools": ["*"],
+  "useLegacyMcpJson": false,
+  "resources": [
+    "skill://.kiro/skills/*/SKILL.md",
+    "skill:///home/agent/.kiro/skills/**/SKILL.md",
+    "skill:///home/agent/.kiro/skills/grill-me/SKILL.md",
+    "file://.kiro/steering/*.md"
+  ],
+  "prompt": "file:///home/agent/.kiro/agents/planner.md",
+  "hooks": {
+    "preToolUse": [
+      {
+        "command": "/home/agent/.kiro/hooks/planner/validate-planner-plan-write.js",
+        "matcher": "write"
+      }
+    ],
+    "postToolUse": [
+      {
+        "command": "/home/agent/.kiro/hooks/planner/open-task-markdown.js",
+        "matcher": "write"
+      }
+    ],
+    "agentSpawn": [
+      {
+        "command": "/home/agent/.kiro/hooks/caveman.sh"
+      },
+      {
+        "command": "/home/agent/.kiro/hooks/locale.sh"
+      }
+    ]
+  }
+}

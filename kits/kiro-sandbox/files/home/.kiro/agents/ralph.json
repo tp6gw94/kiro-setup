@@ -1,0 +1,46 @@
+{
+  "name": "ralph",
+  "description": "You operate in a Docker sandbox with YOLO-style permissions. You have all tools, all MCP servers, all skills, and unrestricted shell access. Use that power to keep working until the assigned task is genuinely complete",
+  "model": "claude-opus-4.8",
+  "tools": [
+    "*"
+  ],
+  "allowedTools": [
+    "*"
+  ],
+  "mcpServers": {
+    "figma-developer-mcp": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "figma-developer-mcp",
+        "--stdio"
+      ]
+    },
+    "context7": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/context7-mcp"
+      ]
+    },
+    "exa": {
+      "type": "remote",
+      "url": "https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa,web_search_advanced_exa"
+    },
+    "github-grep": {
+      "type": "remote",
+      "url": "https://mcp.grep.app"
+    }
+  },
+  "useLegacyMcpJson": false,
+  "resources": [
+    "skill:///home/agent/.kiro/skills/**/SKILL.md",
+    "file://.kiro/steering/*.md",
+    "file://README.md",
+    "skill://.kiro/skills/*/SKILL.md"
+  ],
+  "prompt": "file:///home/agent/.kiro/agents/ralph.md"
+}

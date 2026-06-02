@@ -1,0 +1,62 @@
+{
+  "name": "explorer",
+  "description": "Explorer Agent that investigates codebases, reads documentation, and researches library usage via Context7 and Exa",
+  "model": "claude-sonnet-4.6",
+  "tools": [
+    "*"
+  ],
+  "allowedTools": [
+    "*"
+  ],
+  "useLegacyMcpJson": false,
+  "resources": [
+    "skill:///home/agent/.kiro/skills/**/SKILL.md",
+    "skill://.kiro/skills/*/SKILL.md",
+    "file://.kiro/steering/*.md"
+  ],
+  "mcpServers": {
+    "context7": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/context7-mcp"
+      ]
+    },
+    "exa": {
+      "type": "remote",
+      "url": "https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa,web_search_advanced_exa",
+      "headers": {
+        "x-api-key": "${EXA_API_KEY}"
+      }
+    },
+    "github-grep": {
+      "type": "remote",
+      "url": "https://mcp.grep.app"
+    }
+  },
+  "prompt": "file:///home/agent/.kiro/agents/explorer.md",
+  "hooks": {
+    "preToolUse": [
+      {
+        "command": "/home/agent/.kiro/hooks/plan_writers/validate-artifact-plan-write.js",
+        "matcher": "write"
+      },
+      {
+        "command": "/home/agent/.kiro/hooks/shell/rtk-rewrite.js",
+        "matcher": "shell"
+      }
+    ],
+    "agentSpawn": [
+      {
+        "command": "/home/agent/.kiro/hooks/shell/rtk-rules.sh"
+      },
+      {
+        "command": "/home/agent/.kiro/hooks/caveman.sh"
+      },
+      {
+        "command": "/home/agent/.kiro/hooks/locale.sh"
+      }
+    ]
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "name": "reviewer",
+  "model": "claude-opus-4.8",
+  "tools": ["*"],
+  "allowedTools": ["*"],
+  "useLegacyMcpJson": false,
+  "resources": [
+    "skill://.kiro/skills/*/SKILL.md",
+    "file:///./CLAUDE.md",
+    "file://.kiro/steering/*.md",
+    "skill:///home/agent/.kiro/skills/**/SKILL.md"
+  ],
+  "prompt": "file:///home/agent/.kiro/agents/reviewer.md",
+  "hooks": {
+    "preToolUse": [
+      {
+        "command": "/home/agent/.kiro/hooks/plan_writers/validate-artifact-plan-write.js",
+        "matcher": "write"
+      },
+      {
+        "command": "/home/agent/.kiro/hooks/shell/rtk-rewrite.js",
+        "matcher": "shell"
+      }
+    ],
+    "agentSpawn": [
+      {
+        "command": "/home/agent/.kiro/hooks/shell/rtk-rules.sh"
+      },
+      {
+        "command": "/home/agent/.kiro/hooks/caveman.sh"
+      },
+      {
+        "command": "/home/agent/.kiro/hooks/locale.sh"
+      }
+    ]
+  }
+}

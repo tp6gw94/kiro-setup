@@ -1,0 +1,26 @@
+{
+  "name": "councillor-c",
+  "description": "Council advisor (DeepSeek 3.2). Read-only codebase analysis for multi-model consensus.",
+  "model": "deepseek-3.2",
+  "tools": [
+    "*"
+  ],
+  "allowedTools": [
+    "*"
+  ],
+  "useLegacyMcpJson": false,
+  "resources": [
+    "file://.kiro/steering/*.md"
+  ],
+  "prompt": "file:///home/agent/.kiro/agents/councillor-c.md",
+  "hooks": {
+    "agentSpawn": [
+      {
+        "command": "/home/agent/.kiro/hooks/caveman.sh"
+      },
+      {
+        "command": "/home/agent/.kiro/hooks/locale.sh"
+      }
+    ]
+  }
+}

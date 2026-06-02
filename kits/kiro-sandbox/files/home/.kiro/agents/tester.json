@@ -1,0 +1,42 @@
+{
+  "name": "tester",
+  "description": "Verification Agent that runs and evaluates test results, browser evidence, coverage gaps, and residual risk for code changes",
+  "model": "claude-opus-4.8",
+  "tools": [
+    "*"
+  ],
+  "allowedTools": [
+    "*"
+  ],
+  "useLegacyMcpJson": false,
+  "resources": [
+    "skill:///home/agent/.kiro/skills/**/SKILL.md",
+    "file://.kiro/steering/*.md",
+    "file://README.md",
+    "skill://.kiro/skills/*/SKILL.md"
+  ],
+  "prompt": "file:///home/agent/.kiro/agents/tester.md",
+  "hooks": {
+    "preToolUse": [
+      {
+        "command": "/home/agent/.kiro/hooks/plan_writers/validate-artifact-plan-write.js",
+        "matcher": "write"
+      },
+      {
+        "command": "/home/agent/.kiro/hooks/shell/rtk-rewrite.js",
+        "matcher": "shell"
+      }
+    ],
+    "agentSpawn": [
+      {
+        "command": "/home/agent/.kiro/hooks/shell/rtk-rules.sh"
+      },
+      {
+        "command": "/home/agent/.kiro/hooks/caveman.sh"
+      },
+      {
+        "command": "/home/agent/.kiro/hooks/locale.sh"
+      }
+    ]
+  }
+}

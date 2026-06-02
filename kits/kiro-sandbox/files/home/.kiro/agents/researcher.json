@@ -1,0 +1,36 @@
+{
+  "name": "researcher",
+  "description": "Research Agent that finds, analyzes, and explains academic papers using Exa",
+  "model": "claude-opus-4.8",
+  "tools": [
+    "*"
+  ],
+  "allowedTools": [
+    "*"
+  ],
+  "useLegacyMcpJson": false,
+  "welcomeMessage": "What research topic or paper are you looking for?",
+  "resources": [
+    "skill:///home/agent/.kiro/skills/web-search-advanced-research-paper-exa/SKILL.md"
+  ],
+  "mcpServers": {
+    "exa": {
+      "type": "remote",
+      "url": "https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa,web_search_advanced_exa",
+      "headers": {
+        "x-api-key": "dummy"
+      }
+    }
+  },
+  "prompt": "file:///home/agent/.kiro/agents/researcher.md",
+  "hooks": {
+    "agentSpawn": [
+      {
+        "command": "/home/agent/.kiro/hooks/caveman.sh"
+      },
+      {
+        "command": "/home/agent/.kiro/hooks/locale.sh"
+      }
+    ]
+  }
+}

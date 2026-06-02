@@ -1,0 +1,115 @@
+{
+  "name": "code_supervisor",
+  "prompt": "file:///home/agent/.kiro/agents/code_supervisor.md",
+  "model": "claude-opus-4.8",
+  "description": "Coding Supervisor Agent that orchestrates and delegates tasks to specialized agents",
+  "tools": [
+    "read",
+    "write",
+    "subagent",
+    "todo",
+    "thinking",
+    "introspect",
+    "session",
+    "@git",
+    "@local-fs"
+  ],
+  "allowedTools": [
+    "subagent",
+    "read",
+    "todo",
+    "thinking",
+    "introspect",
+    "session",
+    "@git",
+    "@local-fs"
+  ],
+  "useLegacyMcpJson": false,
+  "toolsSettings": {
+    "write": {
+      "allowedPaths": [
+        "./.plan"
+      ]
+    },
+    "subagent": {
+      "availableAgents": [
+        "planner",
+        "designer",
+        "developer",
+        "explorer",
+        "reviewer",
+        "simplifier",
+        "tester",
+        "debugger",
+        "councillor-a",
+        "councillor-b",
+        "councillor-c",
+        "council-master"
+      ],
+      "trustedAgents": [
+        "planner",
+        "designer",
+        "developer",
+        "explorer",
+        "reviewer",
+        "simplifier",
+        "tester",
+        "debugger",
+        "councillor-a",
+        "councillor-b",
+        "councillor-c",
+        "council-master"
+      ]
+    }
+  },
+  "resources": [
+    "skill://.kiro/skills/*/SKILL.md",
+    "file://.kiro/steering/*.md",
+    "skill:///home/agent/.kiro/skills/**/SKILL.md"
+  ],
+  "mcpServers": {
+    "local-fs": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "/home/agent/.kiro/mcp/local-fs/server.mjs"
+      ]
+    },
+    "git": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "mcp-server-git"
+      ],
+      "env": {
+        "GIT_CONFIG_GLOBAL": "/dev/null"
+      }
+    }
+  },
+  "hooks": {
+    "stop": [
+      {
+        "command": "/home/agent/.kiro/hooks/code_supervisor/cmux-notify.sh"
+      }
+    ],
+    "userPromptSubmit": [
+      {
+        "command": "/home/agent/.kiro/hooks/code_supervisor/phase-reminder.sh"
+      }
+    ],
+    "preToolUse": [
+      {
+        "command": "/home/agent/.kiro/hooks/code_supervisor/validate-supervisor-plan-write.js",
+        "matcher": "write"
+      }
+    ],
+    "agentSpawn": [
+      {
+        "command": "/home/agent/.kiro/hooks/caveman.sh"
+      },
+      {
+        "command": "/home/agent/.kiro/hooks/locale.sh"
+      }
+    ]
+  }
+}

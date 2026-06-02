@@ -6,9 +6,33 @@ extends: kiro
 
 network:
   allowedDomains:
+    - mcp.exa.ai
+    - api.figma.com
     - "*"
+  serviceDomains:
+    mcp.exa.ai: exa
+    api.figma.com: figma
+  serviceAuth:
+    exa:
+      headerName: x-api-key
+      valueFormat: "%s"
+    figma:
+      headerName: "X-Figma-Token"
+      valueFormat: "%s"
+
+credentials:
+  sources:
+    exa:
+      env:
+        - EXA_API_KEY
+    figma:
+      env:
+        - FIGMA_API_KEY
 
 environment:
+  proxyManaged:
+    - EXA_API_KEY
+    - FIGMA_API_KEY
   variables:
     PNPM_HOME: /home/agent/.local/share/pnpm
     PATH: /home/agent/.local/bin:/home/agent/.local/share/pnpm:/usr/local/share/npm-global/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin

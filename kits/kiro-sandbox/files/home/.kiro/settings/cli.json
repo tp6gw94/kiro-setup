@@ -1,0 +1,11 @@
+{
+  "mcp.loadedBefore": true,
+  "chat.defaultAgent": "code_supervisor",
+  "chat.defaultModel": "claude-opus4.8",
+  "chat.enableThinking": true,
+  "chat.enableTangentMode": true,
+  "chat.enableTodoList": true,
+  "chat.greeting.enabled": false,
+  "toolSearch.enabled": false,
+  "chat.showThinking": true
+}

@@ -87,11 +87,6 @@
     }
   },
   "hooks": {
-    "stop": [
-      {
-        "command": "/home/agent/.kiro/hooks/code_supervisor/cmux-notify.sh"
-      }
-    ],
     "userPromptSubmit": [
       {
         "command": "/home/agent/.kiro/hooks/code_supervisor/phase-reminder.sh"
@@ -109,6 +104,11 @@
       },
       {
         "command": "/home/agent/.kiro/hooks/locale.sh"
+      }
+    ],
+    "stop": [
+      {
+        "command": "/home/agent/.kiro/hooks/cmux-notify.sh"
       }
     ]
   }

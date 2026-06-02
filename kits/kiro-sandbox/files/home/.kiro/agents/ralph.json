@@ -42,5 +42,12 @@
     "file://README.md",
     "skill://.kiro/skills/*/SKILL.md"
   ],
-  "prompt": "file:///home/agent/.kiro/agents/ralph.md"
+  "prompt": "file:///home/agent/.kiro/agents/ralph.md",
+  "hooks": {
+    "stop": [
+      {
+        "command": "/home/agent/.kiro/hooks/cmux-notify.sh"
+      }
+    ]
+  }
 }

@@ -1,0 +1,179 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<EOF
+Usage: $0 [options] [sbx-run-args...]
+
+Options:
+  --name <sandbox-name>      Name for a newly created sandbox
+  --existing <sandbox-name>  Reuse an existing sandbox instead of creating one
+  --workspace <path>         Workspace path for sandbox creation (default: current directory)
+  -h, --help                 Show this help
+
+New sandboxes use template kiro-sandbox-template:v1 and kit \$HOME/.kiro/kits/kiro-sandbox.
+EOF
+}
+
+fail_usage() {
+  usage >&2
+  exit 1
+}
+
+sandbox_name="r-$(openssl rand -hex 4)"
+existing_sandbox=""
+workspace="$PWD"
+kit="$HOME/.kiro/kits/kiro-sandbox"
+bridge_script="$HOME/.kiro/kits/kiro-sandbox/cmux-notify-bridge.mjs"
+bridge_host="${CMUX_NOTIFY_BRIDGE_HOST:-0.0.0.0}"
+bridge_port="${CMUX_NOTIFY_BRIDGE_PORT:-17363}"
+bridge_health_url="${CMUX_NOTIFY_BRIDGE_HEALTH_URL:-http://127.0.0.1:${bridge_port}/health}"
+cmux_notify_url="${CMUX_NOTIFY_URL:-http://host.docker.internal:${bridge_port}/notify}"
+run_args=()
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --name)
+      [ -n "${2:-}" ] || fail_usage
+      sandbox_name="$2"
+      shift 2
+      ;;
+    --existing)
+      [ -n "${2:-}" ] || fail_usage
+      existing_sandbox="$2"
+      shift 2
+      ;;
+    --workspace)
+      [ -n "${2:-}" ] || fail_usage
+      case "$2" in
+        /*) workspace="$2" ;;
+        *) workspace="$PWD/$2" ;;
+      esac
+      shift 2
+      ;;
+    --)
+      shift
+      while [ "$#" -gt 0 ]; do
+        run_args+=("$1")
+        shift
+      done
+      ;;
+    --*)
+      echo "Unknown option: $1" >&2
+      fail_usage
+      ;;
+    *)
+      run_args+=("$1")
+      shift
+      ;;
+  esac
+done
+
+if [ -n "$existing_sandbox" ]; then
+  run_sandbox="$existing_sandbox"
+else
+  run_sandbox="$sandbox_name"
+fi
+
+sh_single_quote() {
+  printf "%s" "$1" | sed "s/'/'\\\\''/g"
+}
+
+cmux_ref() {
+  local json="$1"
+  local filter="$2"
+  if [ -z "$json" ]; then
+    return 0
+  fi
+  jq -r "$filter // empty" <<<"$json" 2>/dev/null || true
+}
+
+cmux_identity_json="$(cmux identify --json 2>/dev/null || true)"
+cmux_window="$(cmux_ref "$cmux_identity_json" '.caller.window_ref')"
+cmux_workspace="$(cmux_ref "$cmux_identity_json" '.caller.workspace_ref')"
+cmux_surface="$(cmux_ref "$cmux_identity_json" '.caller.surface_ref')"
+
+cmux_notify_available() {
+  [ -n "$cmux_surface" ] || [ -n "$cmux_workspace" ]
+}
+
+ensure_cmux_notify_bridge() {
+  if curl -fsS -m 1 "$bridge_health_url" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  mkdir -p "$HOME/.kiro/logs"
+  nohup node "$bridge_script" --host "$bridge_host" --port "$bridge_port" </dev/null >>"$HOME/.kiro/logs/cmux-notify-bridge.log" 2>&1 &
+}
+
+inject_cmux_notify_env() {
+  local sandbox="$1"
+  local escaped_url escaped_window escaped_workspace escaped_surface
+
+  escaped_url="$(sh_single_quote "$cmux_notify_url")"
+  escaped_window="$(sh_single_quote "$cmux_window")"
+  escaped_workspace="$(sh_single_quote "$cmux_workspace")"
+  escaped_surface="$(sh_single_quote "$cmux_surface")"
+
+  local script
+  script=$(cat <<EOF
+set -e
+touch /etc/sandbox-persistent.sh
+tmp=\$(mktemp)
+sed '/^# kiro cmux notify start$/,/^# kiro cmux notify end$/d' /etc/sandbox-persistent.sh > "\$tmp"
+cat "\$tmp" > /etc/sandbox-persistent.sh
+rm -f "\$tmp"
+cat >> /etc/sandbox-persistent.sh <<'KIRO_CMUX_NOTIFY_ENV'
+# kiro cmux notify start
+export CMUX_NOTIFY_URL='$escaped_url'
+export CMUX_NOTIFY_WINDOW='$escaped_window'
+export CMUX_NOTIFY_WORKSPACE='$escaped_workspace'
+export CMUX_NOTIFY_SURFACE='$escaped_surface'
+# kiro cmux notify end
+KIRO_CMUX_NOTIFY_ENV
+EOF
+)
+
+  sbx exec -d "$sandbox" bash -c "$script"
+}
+
+create_command=(sbx create -t kiro-sandbox-template:v1 --kit "$kit" --name "$sandbox_name" kiro "$workspace")
+if [ "${#run_args[@]}" -gt 0 ]; then
+  run_command=(sbx run "$run_sandbox" "${run_args[@]}")
+else
+  run_command=(sbx run "$run_sandbox")
+fi
+
+if [ "${SBX_DRY_RUN:-}" = "1" ]; then
+  if [ -z "$existing_sandbox" ]; then
+    echo "sbx create command: ${create_command[*]}"
+  fi
+  if cmux_notify_available; then
+    echo "cmux notify bridge health: $bridge_health_url"
+    echo "cmux notify bridge command: node $bridge_script --host $bridge_host --port $bridge_port"
+    echo "cmux notify sandbox target: window=$cmux_window workspace=$cmux_workspace surface=$cmux_surface"
+    echo "sbx env inject target: $run_sandbox"
+  else
+    echo "cmux notify: skipped (cmux identify unavailable)"
+  fi
+  echo "sbx run command: ${run_command[*]}"
+  exit 0
+fi
+
+if cmux_notify_available; then
+  ensure_cmux_notify_bridge
+fi
+
+if [ -z "$existing_sandbox" ]; then
+  "${create_command[@]}"
+fi
+
+if cmux_notify_available; then
+  inject_cmux_notify_env "$run_sandbox"
+fi
+
+exec "${run_command[@]}"

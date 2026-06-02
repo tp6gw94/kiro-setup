@@ -505,7 +505,7 @@ inject_locale_hook "$AGENTS_DIR/planner.json"
 jq -n \
   --arg prompt "file://${HOME_DIR}/.kiro/agents/code_supervisor.md" \
   --arg skills "$KIRO_SKILLS_URI" \
-  --arg notify "${HOME_DIR}/.kiro/hooks/code_supervisor/cmux-notify.sh" \
+  --arg notify "${HOME_DIR}/.kiro/hooks/cmux-notify.sh" \
   --arg phase_reminder "$KIRO_DIR/hooks/code_supervisor/phase-reminder.sh" \
   --arg validate_write "${HOME_DIR}/.kiro/hooks/code_supervisor/validate-supervisor-plan-write.js" \
   --arg validate_read "${HOME_DIR}/.kiro/hooks/code_supervisor/validate-read-allowed-paths.js" \
@@ -736,7 +736,7 @@ echo "    ✓ $KIRO_DIR/settings/mcp.json"
 echo "  MCP tools:"
 echo "    ✓ $KIRO_DIR/mcp/local-fs/server.mjs"
 echo "  Hooks (managed separately in hooks/):"
-for f in caveman.sh locale.sh code_supervisor/phase-reminder.sh code_supervisor/cmux-notify.sh code_supervisor/validate-read-allowed-paths.js code_supervisor/validate-supervisor-plan-write.js planner/validate-planner-plan-write.js plan_writers/validate-artifact-plan-write.js source_writing/validate-developer-plan.js shell/rtk-rewrite.js shell/rtk-rules.sh shell/validate-local-rm.js; do
+for f in caveman.sh locale.sh cmux-notify.sh code_supervisor/phase-reminder.sh code_supervisor/validate-read-allowed-paths.js code_supervisor/validate-supervisor-plan-write.js planner/validate-planner-plan-write.js plan_writers/validate-artifact-plan-write.js source_writing/validate-developer-plan.js shell/rtk-rewrite.js shell/rtk-rules.sh shell/validate-local-rm.js; do
   if [ -f "$KIRO_DIR/hooks/$f" ]; then
     echo "    ✓ $KIRO_DIR/hooks/$f"
   else

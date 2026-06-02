@@ -44,13 +44,13 @@ sbx template load kiro-sandbox-template.tar
 Create and run a sandbox from this repo:
 
 ```bash
-./kiro-sandbox-run.sh
+kiro-sandbox-run
 ```
 
-`kiro-sandbox-run.sh` creates a named sandbox, then runs it:
+`kiro-sandbox-run` creates a named sandbox, then runs it:
 
 ```bash
-sbx create -t kiro-sandbox-template:v1 --kit "$HOME/.kiro/kits/kiro-sandbox" --name <name> kiro .
+sbx create -t kiro-sandbox-template:v1 --kit "$HOME/.kiro/kits/kiro-sandbox" --name <name> kiro <workspace-path>
 sbx run <name>
 ```
 
@@ -58,21 +58,52 @@ Generated sandbox names use `r-<8 hex>`. Use `--name` for a stable name, or
 `--existing` to skip creation:
 
 ```bash
-./kiro-sandbox-run.sh --name r-dev
-./kiro-sandbox-run.sh --existing r-dev
+kiro-sandbox-run --name r-dev
+kiro-sandbox-run --existing r-dev
 ```
 
 Arguments after `--` are passed to `sbx run <name>`:
 
 ```bash
-./kiro-sandbox-run.sh --name r-dev -- chat --trust-all-tools --resume
+kiro-sandbox-run --name r-dev -- chat --trust-all-tools --resume
 ```
 
-For Ralph iterations, use `ralph-sandbox-loop.sh`:
+`kiro-sandbox-run` starts a shared local cmux notify bridge if one is not
+already listening on port `17363`, then injects the current `cmux identify`
+target into the sandbox. If `cmux identify` is unavailable, the cmux notify
+setup is skipped and the sandbox still starts normally. To start the bridge
+manually:
 
 ```bash
-./ralph-sandbox-loop.sh path/to/task.md 3
-./ralph-sandbox-loop.sh --existing-sandbox r-dev path/to/task.md 3
+node ~/.kiro/kits/kiro-sandbox/cmux-notify-bridge.mjs --host 0.0.0.0 --port 17363
+```
+
+Bridge logs are written to `~/.kiro/logs/cmux-notify-bridge.log`:
+
+```bash
+tail -f ~/.kiro/logs/cmux-notify-bridge.log
+```
+
+The sandbox sends `CMUX_NOTIFY_SURFACE`/`CMUX_NOTIFY_WORKSPACE` in each notify
+payload so multiple sandboxes can share the same bridge without port conflicts.
+To override the target manually inside a sandbox, update `/etc/sandbox-persistent.sh`:
+
+```bash
+sbx exec -d <sandbox-name> bash -c "echo 'export CMUX_NOTIFY_SURFACE=surface:1' >> /etc/sandbox-persistent.sh"
+```
+
+The sandbox kit sets `CMUX_NOTIFY_URL` to
+`http://host.docker.internal:17363/notify` as the baseline notification
+endpoint. `kiro-sandbox-run` only refreshes the cmux target metadata. If your
+runtime cannot resolve `host.docker.internal`, run with
+`CMUX_NOTIFY_URL=http://<host-ip>:17363/notify` so the injected value uses your
+host LAN IP.
+
+For Ralph iterations, use `ralph-sandbox-loop`:
+
+```bash
+ralph-sandbox-loop path/to/task.md 3
+ralph-sandbox-loop --existing-sandbox r-dev path/to/task.md 3
 ```
 
 Sandbox rules:
@@ -81,7 +112,7 @@ Sandbox rules:
 - The template extends `docker/sandbox-templates:kiro-docker` and installs Node.js 24, pnpm, Playwright, RTK, and uv.
 - `kits/kiro-sandbox/spec.yaml` is a `kind: mixin` kit that extends the built-in `kiro` agent.
 - The kit allows network access, proxy-manages Exa and Figma credentials, and sets `PATH`/`PNPM_HOME`.
-- `ralph-sandbox-loop.sh` writes generated prompts under `.ralph-sandbox-loop/`, runs `chat --no-interactive --trust-all-tools --agent ralph`, and stops when Ralph prints `<promise>NO MORE TASKS</promise>`.
+- `ralph-sandbox-loop` writes generated prompts under `~/.kiro/.ralph-sandbox-loop/`, runs `chat --no-interactive --trust-all-tools --agent ralph`, and stops when Ralph prints `<promise>NO MORE TASKS</promise>`.
 - Kiro device-flow auth is stored inside the sandbox at `~/.local/share/kiro-cli/data.sqlite3` and persists until the sandbox is destroyed.
 
 ## Architecture
@@ -113,24 +144,24 @@ Key rules:
 
 ### Leaf Agents
 
-| Agent | Role | Model | Shortcut | MCP |
-|-------|------|-------|----------|-----|
-| `developer` | Code implementation | `claude-opus-4.7` | `ctrl+shift+d` | `local-fs` |
-| `reviewer` | Code review and YAGNI enforcement | `claude-opus-4.7` | `ctrl+r` | - |
-| `designer` | Figma design extraction | `claude-opus-4.7` | `ctrl+shift+f` | `figma-developer-mcp` |
-| `explorer` | Codebase and docs research | `claude-sonnet-4.6` | `ctrl+e` | `context7`, `exa`, `github-grep` |
-| `simplifier` | Code refinement | `claude-opus-4.7` | `ctrl+shift+s` | `git` |
-| `tester` | Verification evidence and risk analysis | `claude-opus-4.7` | `ctrl+t` | - |
-| `debugger` | Root cause investigation | `claude-opus-4.7` | `ctrl+b` | - |
-| `planner` | Structured execution plans | `claude-opus-4.7` | `ctrl+p` | - |
-| `researcher` | Web and paper research | `claude-opus-4.7` | `ctrl+shift+r` | `exa` |
-| `ralph` | Sandbox YOLO implementation loop | `claude-opus-4.8` | - | all MCP servers |
+| Agent | Role | Model | MCP |
+|-------|------|-------|-----|
+| `developer` | Code implementation | `claude-opus-4.7` | `local-fs` |
+| `reviewer` | Code review and YAGNI enforcement | `claude-opus-4.7` | - |
+| `designer` | Figma design extraction | `claude-opus-4.7` | `figma-developer-mcp` |
+| `explorer` | Codebase and docs research | `claude-sonnet-4.6` | `context7`, `exa`, `github-grep` |
+| `simplifier` | Code refinement | `claude-opus-4.7` | `git` |
+| `tester` | Verification evidence and risk analysis | `claude-opus-4.7` | - |
+| `debugger` | Root cause investigation | `claude-opus-4.7` | - |
+| `planner` | Structured execution plans | `claude-opus-4.7` | - |
+| `researcher` | Web and paper research | `claude-opus-4.7` | `exa` |
+| `ralph` | Sandbox YOLO implementation loop | `claude-opus-4.8` | all MCP servers |
 
 ### Supervisor
 
-| Agent | Role | Model | Shortcut | MCP |
-|-------|------|-------|----------|-----|
-| `code_supervisor` | Delegates work and verifies `.plan` artifacts | `claude-opus-4.7` | `ctrl+a` | `git`, `local-fs` |
+| Agent | Role | Model | MCP |
+|-------|------|-------|-----|
+| `code_supervisor` | Delegates work and verifies `.plan` artifacts | `claude-opus-4.7` | `git`, `local-fs` |
 
 ### Council
 
@@ -153,7 +184,7 @@ Runtime hooks are injected by `generate-configs.sh`; test files under `hooks/tes
 | `caveman.sh` | `agentSpawn` | All agents | Injects terse response style |
 | `locale.sh` | `agentSpawn` | All agents | Injects Traditional Chinese locale |
 | `code_supervisor/phase-reminder.sh` | `userPromptSubmit` | `code_supervisor` | Enforces the delegation workflow |
-| `code_supervisor/cmux-notify.sh` | `stop` | `code_supervisor` | Sends cmux desktop notifications |
+| `cmux-notify.sh` | `stop` | `code_supervisor`, `ralph` | Sends cmux desktop notifications |
 | `code_supervisor/validate-read-allowed-paths.js` | `preToolUse` | `code_supervisor` | Restricts supervisor reads |
 | `code_supervisor/validate-supervisor-plan-write.js` | `preToolUse` | `code_supervisor` | Protects planner-owned plan files |
 | `planner/validate-planner-plan-write.js` | `preToolUse` | `planner` | Restricts formal plan writes |

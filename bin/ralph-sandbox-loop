@@ -8,7 +8,7 @@ Usage: $0 [options] <task-file> <iterations>
 Options:
   --name <sandbox-name>              Name for a newly created sandbox
   --existing-sandbox <sandbox-name>  Reuse an existing sandbox instead of creating one
-  --workspace <path>                 Workspace path for sandbox creation (default: .)
+  --workspace <path>                 Workspace path for sandbox creation (default: current directory)
   -h, --help                         Show this help
 
 New sandboxes use template kiro-sandbox-template:v1 and kit \$HOME/.kiro/kits/kiro-sandbox.
@@ -22,7 +22,7 @@ fail_usage() {
 
 ralph_sandbox_name="r-$(openssl rand -hex 4)"
 ralph_existing_sandbox=""
-ralph_workspace="."
+ralph_workspace="$PWD"
 ralph_kit="$HOME/.kiro/kits/kiro-sandbox"
 positional=()
 
@@ -44,7 +44,10 @@ while [ "$#" -gt 0 ]; do
       ;;
     --workspace)
       [ -n "${2:-}" ] || fail_usage
-      ralph_workspace="$2"
+      case "$2" in
+        /*) ralph_workspace="$2" ;;
+        *) ralph_workspace="$PWD/$2" ;;
+      esac
       shift 2
       ;;
     --)
@@ -77,14 +80,20 @@ if [ ! -f "$task_file" ]; then
   exit 1
 fi
 
+case "$task_file" in
+  /*) ;;
+  *) task_file="$PWD/$task_file" ;;
+esac
+
 if ! [[ "$iterations" =~ ^[1-9][0-9]*$ ]]; then
   echo "iterations must be a positive integer" >&2
   exit 1
 fi
 
 commits=$(git log -n 5 --format="%H%n%ad%n%B---" --date=short 2>/dev/null || echo "No commits found")
-mkdir -p .ralph-sandbox-loop
-ralph_input_file=".ralph-sandbox-loop/input-$(date +%Y%m%d%H%M%S)-$$.md"
+ralph_input_dir="$HOME/.kiro/.ralph-sandbox-loop"
+mkdir -p "$ralph_input_dir"
+ralph_input_file="$ralph_input_dir/input-$(date +%Y%m%d%H%M%S)-$$.md"
 {
   printf 'Read this file and execute exactly one Ralph iteration from it.\n\n'
   printf 'Previous commits:\n%s\n\n' "$commits"

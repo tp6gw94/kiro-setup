@@ -31,35 +31,58 @@ kiro-cli chat
 
 ### Docker Sandbox 設定
 
-`kits/kiro-sandbox` 是此 repo 的本機 Docker Sandbox kit。它是
-`kind: mixin`，會 extend 內建的 `kiro` agent、開放 sandbox 網路存取，並設定
-global Kiro config 需要的 runtime `PATH`/`PNPM_HOME`。
+此 repo 使用自訂 Docker Sandbox template 與本機 Kiro mixin kit。
 
-先用 `Dockerfile.kiro-sandbox` 建立 custom Kiro template，再載入 kit 執行
-Kiro：
+先 build 並載入 template 一次：
 
 ```bash
 ./build-kiro-sandbox-template.sh kiro-sandbox-template:v1
 docker image save kiro-sandbox-template:v1 -o kiro-sandbox-template.tar
 sbx template load kiro-sandbox-template.tar
-sbx run -t kiro-sandbox-template:v1 --kit ./kits/kiro-sandbox kiro
 ```
 
-build script 會執行 `sync-kit-skills.sh`，把 symlink skills 展開到 kit 的
-`files/home/.kiro/skills`，建立暫時 Docker build context，並將
-`kits/kiro-sandbox/files/home/.kiro` 複製進 image 的 `/home/agent/.kiro`。這個
-template 會 extend `docker/sandbox-templates:kiro-docker`、安裝 Node.js 24、pnpm、
-Playwright、RTK 與 uv、設定 Git identity/default branch 預設值，並將 global
-Kiro 設定 bake 到 `/home/agent/.kiro`。
-
-如果 sandbox 建立後需要 host credentials，可將支援的環境變數注入 sandbox 的
-persistent shell profile：
+從此 repo 建立並執行 sandbox：
 
 ```bash
-kits/kiro-sandbox/inject-env.sh <sandbox-name>
+./kiro-sandbox-run.sh
 ```
 
-`inject-env.sh` 目前會持久化 `EXA_API_KEY` 與 `FIGMA_API_KEY`。
+`kiro-sandbox-run.sh` 會建立具名 sandbox，接著執行它：
+
+```bash
+sbx create -t kiro-sandbox-template:v1 --kit "$HOME/.kiro/kits/kiro-sandbox" --name <name> kiro .
+sbx run <name>
+```
+
+自動產生的 sandbox name 使用 `r-<8 hex>`。需要固定名稱時傳 `--name`；
+要略過 create 並重用既有 sandbox 時傳 `--existing`：
+
+```bash
+./kiro-sandbox-run.sh --name r-dev
+./kiro-sandbox-run.sh --existing r-dev
+```
+
+`--` 後的參數會傳給 `sbx run <name>`：
+
+```bash
+./kiro-sandbox-run.sh --name r-dev -- chat --trust-all-tools --resume
+```
+
+Ralph iteration 使用 `ralph-sandbox-loop.sh`：
+
+```bash
+./ralph-sandbox-loop.sh path/to/task.md 3
+./ralph-sandbox-loop.sh --existing-sandbox r-dev path/to/task.md 3
+```
+
+Sandbox 規則：
+
+- `build-kiro-sandbox-template.sh` 會執行 `sync-kit-skills.sh`、展開 symlink skills，並將此 repo 生成出的 Kiro config bake 到 `/home/agent/.kiro`。
+- template 會 extend `docker/sandbox-templates:kiro-docker`，並安裝 Node.js 24、pnpm、Playwright、RTK 與 uv。
+- `kits/kiro-sandbox/spec.yaml` 是 `kind: mixin` kit，會 extend 內建的 `kiro` agent。
+- kit 會開放網路存取、proxy-manage Exa/Figma credentials，並設定 `PATH`/`PNPM_HOME`。
+- `ralph-sandbox-loop.sh` 會在 `.ralph-sandbox-loop/` 寫入 generated prompts，執行 `chat --no-interactive --trust-all-tools --agent ralph`，並在 Ralph 輸出 `<promise>NO MORE TASKS</promise>` 時停止。
+- Kiro device-flow auth 儲存在 sandbox 內的 `~/.local/share/kiro-cli/data.sqlite3`，會保留到該 sandbox 被刪除為止。
 
 ## 架構
 

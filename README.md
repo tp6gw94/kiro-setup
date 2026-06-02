@@ -31,37 +31,58 @@ The default response language is Traditional Chinese. Change it in `hooks/locale
 
 ### Docker Sandbox Configs
 
-`kits/kiro-sandbox` is the local Docker Sandbox kit for this repo. It is a
-`kind: mixin` kit that extends the built-in `kiro` agent, opens network access
-for the sandbox, and sets the runtime `PATH`/`PNPM_HOME` values expected by the
-global Kiro config.
+This repo has a custom Docker Sandbox template and a local Kiro mixin kit.
 
-Build a custom Kiro template from `Dockerfile.kiro-sandbox`, then run Kiro with
-the kit loaded:
+Build and load the template once:
 
 ```bash
 ./build-kiro-sandbox-template.sh kiro-sandbox-template:v1
 docker image save kiro-sandbox-template:v1 -o kiro-sandbox-template.tar
 sbx template load kiro-sandbox-template.tar
-sbx run -t kiro-sandbox-template:v1 --kit ./kits/kiro-sandbox kiro
 ```
 
-The build script runs `sync-kit-skills.sh`, expands symlinked skills into the
-kit's `files/home/.kiro/skills` tree, creates a temporary Docker build context,
-and copies `kits/kiro-sandbox/files/home/.kiro` into the image as
-`/home/agent/.kiro`. The template extends
-`docker/sandbox-templates:kiro-docker`, installs Node.js 24, pnpm, Playwright,
-RTK, and uv, configures Git identity/default branch defaults, and bakes the
-global Kiro settings into `/home/agent/.kiro`.
-
-If the sandbox needs host credentials after creation, inject the supported
-environment variables into the sandbox's persistent shell profile:
+Create and run a sandbox from this repo:
 
 ```bash
-kits/kiro-sandbox/inject-env.sh <sandbox-name>
+./kiro-sandbox-run.sh
 ```
 
-`inject-env.sh` currently persists `EXA_API_KEY` and `FIGMA_API_KEY`.
+`kiro-sandbox-run.sh` creates a named sandbox, then runs it:
+
+```bash
+sbx create -t kiro-sandbox-template:v1 --kit "$HOME/.kiro/kits/kiro-sandbox" --name <name> kiro .
+sbx run <name>
+```
+
+Generated sandbox names use `r-<8 hex>`. Use `--name` for a stable name, or
+`--existing` to skip creation:
+
+```bash
+./kiro-sandbox-run.sh --name r-dev
+./kiro-sandbox-run.sh --existing r-dev
+```
+
+Arguments after `--` are passed to `sbx run <name>`:
+
+```bash
+./kiro-sandbox-run.sh --name r-dev -- chat --trust-all-tools --resume
+```
+
+For Ralph iterations, use `ralph-sandbox-loop.sh`:
+
+```bash
+./ralph-sandbox-loop.sh path/to/task.md 3
+./ralph-sandbox-loop.sh --existing-sandbox r-dev path/to/task.md 3
+```
+
+Sandbox rules:
+
+- `build-kiro-sandbox-template.sh` runs `sync-kit-skills.sh`, expands symlinked skills, and bakes this repo's generated Kiro config into `/home/agent/.kiro`.
+- The template extends `docker/sandbox-templates:kiro-docker` and installs Node.js 24, pnpm, Playwright, RTK, and uv.
+- `kits/kiro-sandbox/spec.yaml` is a `kind: mixin` kit that extends the built-in `kiro` agent.
+- The kit allows network access, proxy-manages Exa and Figma credentials, and sets `PATH`/`PNPM_HOME`.
+- `ralph-sandbox-loop.sh` writes generated prompts under `.ralph-sandbox-loop/`, runs `chat --no-interactive --trust-all-tools --agent ralph`, and stops when Ralph prints `<promise>NO MORE TASKS</promise>`.
+- Kiro device-flow auth is stored inside the sandbox at `~/.local/share/kiro-cli/data.sqlite3` and persists until the sandbox is destroyed.
 
 ## Architecture
 

@@ -20,7 +20,7 @@ fail_usage() {
   exit 1
 }
 
-ralph_sandbox_name="ralph-$(date +%Y%m%d%H%M%S)-$$"
+ralph_sandbox_name="r-$(openssl rand -hex 4)"
 ralph_existing_sandbox=""
 ralph_workspace="."
 ralph_kit="$HOME/.kiro/kits/kiro-sandbox"

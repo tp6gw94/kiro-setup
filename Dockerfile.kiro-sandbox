@@ -17,6 +17,8 @@ ENV PATH=/home/agent/.local/bin:/home/agent/.local/share/pnpm:/usr/local/share/n
 
 RUN curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+RUN npx playwright install-deps chromium
+RUN npx playwright install chromium
 
 COPY --chown=agent:agent home/agent/.gitconfig /home/agent/.gitconfig
 COPY --chown=agent:agent home/agent/.kiro /home/agent/.kiro

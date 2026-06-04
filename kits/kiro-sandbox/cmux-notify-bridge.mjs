@@ -70,7 +70,12 @@ function targetArgs(target) {
 function runCmux(args, description) {
   return new Promise((resolve, reject) => {
     log("cmux command start", { description, args });
-    const child = spawn("cmux", args);
+    const child = spawn("cmux", args, { stdio: ["ignore", "pipe", "pipe"] });
+
+    let stderr = "";
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk;
+    });
 
     child.on("error", (error) => {
       log("cmux command error", { description, error: error.message });
@@ -82,26 +87,29 @@ function runCmux(args, description) {
         resolve();
         return;
       }
-      const error = new Error(`${description} exited with ${code}`);
-      log("cmux command failed", { description, code });
+      const detail = stderr.trim();
+      const error = new Error(`${description} exited with ${code}${detail ? ": " + detail : ""}`);
+      log("cmux command failed", { description, code, stderr: detail });
       reject(error);
     });
   });
 }
 
 async function runCmuxNotify({ title, subtitle, body, target }) {
-  const notifyArgs = [
-    "notify",
-    ...targetArgs(target),
-    "--title",
-    title,
-    "--subtitle",
-    subtitle,
-    "--body",
-    body,
-  ];
+  const baseArgs = ["--title", title, "--subtitle", subtitle, "--body", body];
+  const notifyArgs = ["notify", ...targetArgs(target), ...baseArgs];
 
-  await runCmux(notifyArgs, "cmux notify");
+  const hasTarget = Boolean(target.window || target.workspace || target.surface);
+  try {
+    await runCmux(notifyArgs, "cmux notify");
+  } catch (error) {
+    if (hasTarget && /not found/i.test(error.message)) {
+      log("cmux notify retry without target", { reason: error.message });
+      await runCmux(["notify", ...baseArgs], "cmux notify");
+      return;
+    }
+    throw error;
+  }
 
   if (target.surface || target.workspace) {
     await runCmux(["trigger-flash", ...targetArgs(target)], "cmux trigger-flash");

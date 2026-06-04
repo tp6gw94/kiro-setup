@@ -9,6 +9,7 @@ Options:
   --name <sandbox-name>      Name for a newly created sandbox
   --existing <sandbox-name>  Reuse an existing sandbox instead of creating one
   --workspace <path>         Workspace path for sandbox creation (default: current directory)
+  --bash                     Open interactive bash (sbx exec -it) instead of sbx run
   -h, --help                 Show this help
 
 New sandboxes use template kiro-sandbox-template:v1 and kit \$HOME/.kiro/kits/kiro-sandbox.
@@ -22,7 +23,9 @@ fail_usage() {
 
 sandbox_name="r-$(openssl rand -hex 4)"
 existing_sandbox=""
+bash_mode=""
 workspace="$PWD"
+workspace_set=""
 kit="$HOME/.kiro/kits/kiro-sandbox"
 bridge_script="$HOME/.kiro/kits/kiro-sandbox/cmux-notify-bridge.mjs"
 bridge_host="${CMUX_NOTIFY_BRIDGE_HOST:-0.0.0.0}"
@@ -53,7 +56,12 @@ while [ "$#" -gt 0 ]; do
         /*) workspace="$2" ;;
         *) workspace="$PWD/$2" ;;
       esac
+      workspace_set=1
       shift 2
+      ;;
+    --bash)
+      bash_mode=1
+      shift
       ;;
     --)
       shift
@@ -67,7 +75,15 @@ while [ "$#" -gt 0 ]; do
       fail_usage
       ;;
     *)
-      run_args+=("$1")
+      if [ -z "$workspace_set" ] && [ -z "$existing_sandbox" ]; then
+        case "$1" in
+          /*) workspace="$1" ;;
+          *) workspace="$PWD/$1" ;;
+        esac
+        workspace_set=1
+      else
+        run_args+=("$1")
+      fi
       shift
       ;;
   esac
@@ -142,7 +158,9 @@ EOF
 }
 
 create_command=(sbx create -t kiro-sandbox-template:v1 --kit "$kit" --name "$sandbox_name" kiro "$workspace")
-if [ "${#run_args[@]}" -gt 0 ]; then
+if [ -n "$bash_mode" ]; then
+  run_command=(sbx exec -it "$run_sandbox" bash)
+elif [ "${#run_args[@]}" -gt 0 ]; then
   run_command=(sbx run "$run_sandbox" "${run_args[@]}")
 else
   run_command=(sbx run "$run_sandbox")
@@ -160,7 +178,11 @@ if [ "${SBX_DRY_RUN:-}" = "1" ]; then
   else
     echo "cmux notify: skipped (cmux identify unavailable)"
   fi
-  echo "sbx run command: ${run_command[*]}"
+  if [ -n "$bash_mode" ]; then
+    echo "sbx exec command: ${run_command[*]}"
+  else
+    echo "sbx run command: ${run_command[*]}"
+  fi
   exit 0
 fi
 

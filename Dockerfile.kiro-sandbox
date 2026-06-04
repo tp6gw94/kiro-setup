@@ -7,7 +7,6 @@ RUN apt-get update \
   && curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
   && apt-get install -y --no-install-recommends nodejs \
   && npm install -g pnpm @playwright/cli@latest \
-  && node "$(npm root -g)/@playwright/cli/node_modules/playwright/cli.js" install-deps chromium \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
@@ -18,7 +17,6 @@ ENV PATH=/home/agent/.local/bin:/home/agent/.local/share/pnpm:/usr/local/share/n
 
 RUN curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-RUN node "$(npm root -g)/@playwright/cli/node_modules/playwright/cli.js" install chromium
 
 COPY --chown=agent:agent home/agent/.gitconfig /home/agent/.gitconfig
 COPY --chown=agent:agent home/agent/.kiro /home/agent/.kiro

@@ -6,8 +6,7 @@ usage() {
 Usage: $0 [options] [sbx-run-args...]
 
 Options:
-  --name <sandbox-name>      Name for a newly created sandbox
-  --existing <sandbox-name>  Reuse an existing sandbox instead of creating one
+  --name <sandbox-name>      Sandbox name. Reused if it already exists, otherwise created
   --workspace <path>         Workspace path for sandbox creation (default: current directory)
   --bash                     Open interactive bash (sbx exec -it) instead of sbx run
   -h, --help                 Show this help
@@ -22,7 +21,6 @@ fail_usage() {
 }
 
 sandbox_name="r-$(openssl rand -hex 4)"
-existing_sandbox=""
 bash_mode=""
 workspace="$PWD"
 workspace_set=""
@@ -43,11 +41,6 @@ while [ "$#" -gt 0 ]; do
     --name)
       [ -n "${2:-}" ] || fail_usage
       sandbox_name="$2"
-      shift 2
-      ;;
-    --existing)
-      [ -n "${2:-}" ] || fail_usage
-      existing_sandbox="$2"
       shift 2
       ;;
     --workspace)
@@ -75,7 +68,7 @@ while [ "$#" -gt 0 ]; do
       fail_usage
       ;;
     *)
-      if [ -z "$workspace_set" ] && [ -z "$existing_sandbox" ]; then
+      if [ -z "$workspace_set" ]; then
         case "$1" in
           /*) workspace="$1" ;;
           *) workspace="$PWD/$1" ;;
@@ -89,11 +82,16 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
-if [ -n "$existing_sandbox" ]; then
-  run_sandbox="$existing_sandbox"
-else
-  run_sandbox="$sandbox_name"
-fi
+run_sandbox="$sandbox_name"
+
+# Returns 0 if a sandbox with the given name already exists.
+# Degrades gracefully (returns non-zero) when sbx is unavailable.
+sandbox_exists() {
+  local name="$1"
+  [ -n "$name" ] || return 1
+  command -v sbx >/dev/null 2>&1 || return 1
+  sbx ls -q 2>/dev/null | grep -Fxq -- "$name"
+}
 
 sh_single_quote() {
   printf "%s" "$1" | sed "s/'/'\\\\''/g"
@@ -166,8 +164,16 @@ else
   run_command=(sbx run "$run_sandbox")
 fi
 
+if sandbox_exists "$sandbox_name"; then
+  reuse_existing=1
+else
+  reuse_existing=""
+fi
+
 if [ "${SBX_DRY_RUN:-}" = "1" ]; then
-  if [ -z "$existing_sandbox" ]; then
+  if [ -n "$reuse_existing" ]; then
+    echo "sbx reuse existing sandbox: $run_sandbox"
+  else
     echo "sbx create command: ${create_command[*]}"
   fi
   if cmux_notify_available; then
@@ -190,7 +196,7 @@ if cmux_notify_available; then
   ensure_cmux_notify_bridge
 fi
 
-if [ -z "$existing_sandbox" ]; then
+if [ -z "$reuse_existing" ]; then
   "${create_command[@]}"
 fi
 

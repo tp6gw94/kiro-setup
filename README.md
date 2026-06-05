@@ -54,12 +54,11 @@ sbx create -t kiro-sandbox-template:v1 --kit "$HOME/.kiro/kits/kiro-sandbox" --n
 sbx run <name>
 ```
 
-Generated sandbox names use `r-<8 hex>`. Use `--name` for a stable name, or
-`--existing` to skip creation:
+Generated sandbox names use `r-<8 hex>`. Pass `--name` for a stable name:
+the sandbox is reused if it already exists, otherwise it is created.
 
 ```bash
 kiro-sandbox-run --name r-dev
-kiro-sandbox-run --existing r-dev
 ```
 
 Arguments after `--` are passed to `sbx run <name>`:
@@ -103,7 +102,7 @@ For Ralph iterations, use `ralph-sandbox-loop`:
 
 ```bash
 ralph-sandbox-loop path/to/task.md 3
-ralph-sandbox-loop --existing-sandbox r-dev path/to/task.md 3
+ralph-sandbox-loop --name r-dev path/to/task.md 3
 ```
 
 Sandbox rules:

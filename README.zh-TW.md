@@ -54,12 +54,11 @@ sbx create -t kiro-sandbox-template:v1 --kit "$HOME/.kiro/kits/kiro-sandbox" --n
 sbx run <name>
 ```
 
-自動產生的 sandbox name 使用 `r-<8 hex>`。需要固定名稱時傳 `--name`；
-要略過 create 並重用既有 sandbox 時傳 `--existing`：
+自動產生的 sandbox name 使用 `r-<8 hex>`。需要固定名稱時傳 `--name`：
+若該 sandbox 已存在就重用，否則就建立新的。
 
 ```bash
 kiro-sandbox-run --name r-dev
-kiro-sandbox-run --existing r-dev
 ```
 
 `--` 後的參數會傳給 `sbx run <name>`：
@@ -102,7 +101,7 @@ Ralph iteration 使用 `ralph-sandbox-loop`：
 
 ```bash
 ralph-sandbox-loop path/to/task.md 3
-ralph-sandbox-loop --existing-sandbox r-dev path/to/task.md 3
+ralph-sandbox-loop --name r-dev path/to/task.md 3
 ```
 
 Sandbox 規則：

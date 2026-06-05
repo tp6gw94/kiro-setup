@@ -6,8 +6,7 @@ usage() {
 Usage: $0 [options] <task-file> <iterations>
 
 Options:
-  --name <sandbox-name>              Name for a newly created sandbox
-  --existing-sandbox <sandbox-name>  Reuse an existing sandbox instead of creating one
+  --name <sandbox-name>              Sandbox name. Reused if it already exists, otherwise created
   --workspace <path>                 Workspace path for sandbox creation (default: current directory)
   -h, --help                         Show this help
 
@@ -21,7 +20,6 @@ fail_usage() {
 }
 
 ralph_sandbox_name="r-$(openssl rand -hex 4)"
-ralph_existing_sandbox=""
 ralph_workspace="$PWD"
 ralph_kit="$HOME/.kiro/kits/kiro-sandbox"
 positional=()
@@ -35,11 +33,6 @@ while [ "$#" -gt 0 ]; do
     --name)
       [ -n "${2:-}" ] || fail_usage
       ralph_sandbox_name="$2"
-      shift 2
-      ;;
-    --existing-sandbox)
-      [ -n "${2:-}" ] || fail_usage
-      ralph_existing_sandbox="$2"
       shift 2
       ;;
     --workspace)
@@ -103,17 +96,30 @@ ralph_input_file="$ralph_input_dir/input-$(date +%Y%m%d%H%M%S)-$$.md"
   printf '\n'
 } >"$ralph_input_file"
 
-if [ -n "$ralph_existing_sandbox" ]; then
-  ralph_run_sandbox="$ralph_existing_sandbox"
+run_sandbox="$ralph_sandbox_name"
+
+# Returns 0 if a sandbox with the given name already exists.
+# Degrades gracefully (returns non-zero) when sbx is unavailable.
+sandbox_exists() {
+  local name="$1"
+  [ -n "$name" ] || return 1
+  command -v sbx >/dev/null 2>&1 || return 1
+  sbx ls -q 2>/dev/null | grep -Fxq -- "$name"
+}
+
+if sandbox_exists "$ralph_sandbox_name"; then
+  ralph_reuse_existing=1
 else
-  ralph_run_sandbox="$ralph_sandbox_name"
+  ralph_reuse_existing=""
 fi
 
 sbx_create_command=(sbx create -t kiro-sandbox-template:v1 --kit "$ralph_kit" --name "$ralph_sandbox_name" kiro "$ralph_workspace")
-sbx_command=(sbx run "$ralph_run_sandbox" -- chat --no-interactive --trust-all-tools --agent ralph "$ralph_input_file")
+sbx_command=(sbx run "$run_sandbox" -- chat --no-interactive --trust-all-tools --agent ralph "$ralph_input_file")
 
 if [ "${RALPH_DRY_RUN:-}" = "1" ]; then
-  if [ -z "$ralph_existing_sandbox" ]; then
+  if [ -n "$ralph_reuse_existing" ]; then
+    echo "sbx reuse existing sandbox: $run_sandbox"
+  else
     echo "sbx create command: ${sbx_create_command[*]}"
   fi
   echo "sbx command: ${sbx_command[*]}"
@@ -121,7 +127,7 @@ if [ "${RALPH_DRY_RUN:-}" = "1" ]; then
   exit 0
 fi
 
-if [ -z "$ralph_existing_sandbox" ]; then
+if [ -z "$ralph_reuse_existing" ]; then
   "${sbx_create_command[@]}"
 fi
 

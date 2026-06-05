@@ -84,7 +84,7 @@ if ! [[ "$iterations" =~ ^[1-9][0-9]*$ ]]; then
 fi
 
 commits=$(git log -n 5 --format="%H%n%ad%n%B---" --date=short 2>/dev/null || echo "No commits found")
-ralph_input_dir="$HOME/.kiro/.ralph-sandbox-loop"
+ralph_input_dir="$ralph_workspace/.ralph-sandbox-loop"
 mkdir -p "$ralph_input_dir"
 ralph_input_file="$ralph_input_dir/input-$(date +%Y%m%d%H%M%S)-$$.md"
 {

@@ -3,22 +3,44 @@ FROM docker/sandbox-templates:kiro-docker
 USER root
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends ca-certificates curl gnupg \
+  && apt-get install -y --no-install-recommends ca-certificates curl gnupg unzip \
   && curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
   && apt-get install -y --no-install-recommends nodejs \
-  && npm install -g pnpm @playwright/cli@latest \
+  && npm install -g pnpm @playwright/cli@0.1.13 \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
 USER agent
+
+ENV PLAYWRIGHT_HOST_PLATFORM_OVERRIDE=ubuntu24.04-arm64
+ENV PLAYWRIGHT_BROWSERS_PATH=/home/agent/.cache/ms-playwright
 
 ENV PNPM_HOME=/home/agent/.local/share/pnpm
 ENV PATH=/home/agent/.local/bin:/home/agent/.local/share/pnpm:/usr/local/share/npm-global/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 RUN curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-RUN npx playwright install-deps chromium
-RUN npx playwright install chromium
+RUN npx --yes playwright install-deps chromium
+
+# Download chromium / headless-shell from fixed CDN URLs and extract manually,
+# bypassing the Playwright built-in extractor which stalls under ARM emulation.
+# Revision 1224 matches the playwright-core bundled by @playwright/cli@0.1.13
+RUN set -eux; \
+  PW=/home/agent/.cache/ms-playwright; \
+  BASE=https://cdn.playwright.dev/dbazure/download/playwright/builds/chromium/1224; \
+  mkdir -p "$PW"; \
+  for spec in \
+    "chromium-linux-arm64.zip:chromium-1224" \
+    "chromium-headless-shell-linux-arm64.zip:chromium_headless_shell-1224"; do \
+    zip="${spec%%:*}"; dir="${spec##*:}"; \
+    curl -fSL --retry 3 --retry-delay 2 -o /tmp/pw.zip "$BASE/$zip"; \
+    unzip -tq /tmp/pw.zip; \
+    rm -rf "$PW/$dir"; mkdir -p "$PW/$dir"; \
+    unzip -q /tmp/pw.zip -d "$PW/$dir"; \
+    : > "$PW/$dir/INSTALLATION_COMPLETE"; \
+    : > "$PW/$dir/DEPENDENCIES_VALIDATED"; \
+    rm -f /tmp/pw.zip; \
+  done
 
 COPY --chown=agent:agent home/agent/.gitconfig /home/agent/.gitconfig
 COPY --chown=agent:agent home/agent/.kiro /home/agent/.kiro

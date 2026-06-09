@@ -40,3 +40,21 @@ environment:
 
 commands:
   install: []
+
+memory: |
+  ## Network service binding rule
+
+  When starting any network service inside the sandbox (dev server, API,
+  preview server, etc.), always bind to `0.0.0.0`. Never bind to
+  `localhost` or `127.0.0.1`.
+
+  Why: the sandbox is network-isolated. The host reaches services via
+  `sbx ports <name> --publish <host>:<port>`. A service bound only to
+  `127.0.0.1` / `localhost` is not reachable through a published port.
+
+  Common flags:
+  - Next.js: `next dev -H 0.0.0.0`
+  - Vite: `vite --host 0.0.0.0`
+  - Others: pass `--host 0.0.0.0` or set the listen address to `0.0.0.0`
+
+  Bind to `[::]` if you need to accept both IPv4 and IPv6.

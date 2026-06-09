@@ -1,7 +1,7 @@
 {
   "name": "ralph",
   "description": "You operate in a Docker sandbox with YOLO-style permissions. You have all tools, all MCP servers, all skills, and unrestricted shell access. Use that power to keep working until the assigned task is genuinely complete",
-  "model": "claude-opus-4.8",
+  "model": "claude-opus-4.7",
   "tools": [
     "*"
   ],

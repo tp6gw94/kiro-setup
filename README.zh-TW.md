@@ -110,7 +110,7 @@ Sandbox 規則：
 - template 會 extend `docker/sandbox-templates:kiro-docker`，並安裝 Node.js 24、pnpm、Playwright、RTK 與 uv。
 - `kits/kiro-sandbox/spec.yaml` 是 `kind: mixin` kit，會 extend 內建的 `kiro` agent。
 - kit 會開放網路存取、proxy-manage Exa/Figma credentials，並設定 `PATH`/`PNPM_HOME`。
-- `ralph-sandbox-loop` 會在 `~/.kiro/.ralph-sandbox-loop/` 寫入 generated prompts，執行 `chat --no-interactive --trust-all-tools --agent ralph`，並在 Ralph 輸出 `<promise>NO MORE TASKS</promise>` 時停止。
+- `ralph-sandbox-loop` 會在 `<workspace>/.ralph-sandbox-loop/`（workspace 預設為當前目錄，讓 prompt 在掛載進 sandbox 後讀得到）寫入 generated prompts，執行 `chat --no-interactive --trust-all-tools --agent ralph`，並在 Ralph 輸出 `<promise>NO MORE TASKS</promise>` 時停止。
 - Kiro device-flow auth 儲存在 sandbox 內的 `~/.local/share/kiro-cli/data.sqlite3`，會保留到該 sandbox 被刪除為止。
 
 ## 架構

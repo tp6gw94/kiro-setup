@@ -96,6 +96,9 @@ ralph_input_file="$ralph_input_dir/input-$(date +%Y%m%d%H%M%S)-$$.md"
   printf '\n'
 } >"$ralph_input_file"
 
+ralph_log_dir="$PWD/.ralph_log"
+mkdir -p "$ralph_log_dir"
+
 run_sandbox="$ralph_sandbox_name"
 
 # Returns 0 if a sandbox with the given name already exists.
@@ -124,6 +127,7 @@ if [ "${RALPH_DRY_RUN:-}" = "1" ]; then
   fi
   echo "sbx command: ${sbx_command[*]}"
   echo "generated input: $ralph_input_file"
+  echo "log dir: $ralph_log_dir"
   exit 0
 fi
 
@@ -132,20 +136,16 @@ if [ -z "$ralph_reuse_existing" ]; then
 fi
 
 for ((i = 1; i <= iterations; i++)); do
-  tmpfile=$(mktemp)
+  log_file="$ralph_log_dir/run-$(date +%Y%m%d%H%M%S)-$$-iter$i.log"
 
-  cleanup() {
-    rm -f "$tmpfile"
-  }
-  trap cleanup EXIT
+  "${sbx_command[@]}" | tee "$log_file"
 
-  "${sbx_command[@]}" | tee "$tmpfile"
-
-  if grep -q '<promise>NO MORE TASKS</promise>' "$tmpfile"; then
-    echo "Ralph complete after $i iterations."
+  # Inspect the newest log file (by modification time) in .ralph_log for the
+  # completion promise. Logs are kept for later inspection (not deleted).
+  latest_log=$(ls -1t "$ralph_log_dir" 2>/dev/null | head -n1 || true)
+  if [ -n "$latest_log" ] && \
+     grep -q '<promise>NO MORE TASKS</promise>' "$ralph_log_dir/$latest_log"; then
+    echo "Ralph complete after $i iterations (promise found in $latest_log)."
     exit 0
   fi
-
-  rm -f "$tmpfile"
-  trap - EXIT
 done

@@ -111,7 +111,7 @@ Sandbox rules:
 - The template extends `docker/sandbox-templates:kiro-docker` and installs Node.js 24, pnpm, Playwright, RTK, and uv.
 - `kits/kiro-sandbox/spec.yaml` is a `kind: mixin` kit that extends the built-in `kiro` agent.
 - The kit allows network access, proxy-manages Exa and Figma credentials, and sets `PATH`/`PNPM_HOME`.
-- `ralph-sandbox-loop` writes generated prompts under `~/.kiro/.ralph-sandbox-loop/`, runs `chat --no-interactive --trust-all-tools --agent ralph`, and stops when Ralph prints `<promise>NO MORE TASKS</promise>`.
+- `ralph-sandbox-loop` writes generated prompts under `<workspace>/.ralph-sandbox-loop/` (the workspace defaults to the current directory, so the prompt is visible inside the mounted sandbox), runs `chat --no-interactive --trust-all-tools --agent ralph`, and stops when Ralph prints `<promise>NO MORE TASKS</promise>`.
 - Kiro device-flow auth is stored inside the sandbox at `~/.local/share/kiro-cli/data.sqlite3` and persists until the sandbox is destroyed.
 
 ## Architecture

@@ -15,23 +15,28 @@ function parsePayload(input) {
   }
 }
 
+// Resolve `~`, make absolute, and collapse `..`/`.` WITHOUT following
+// symlinks. Following symlinks (realpath) wrongly rejected legitimate paths
+// such as ~/.kiro/skills/<name> when those entries are symlinks pointing
+// outside the allowed root (e.g. into ~/.agents/skills).
 function normalizePath(base, value) {
   const expanded =
     value === "~" || value.startsWith(`~${path.sep}`)
       ? path.join(os.homedir(), value.slice(1))
       : value;
   const absolute = path.isAbsolute(expanded) ? expanded : path.resolve(base, expanded);
-  const parts = path.resolve(absolute).split(path.sep);
-  for (let i = parts.length; i > 0; i -= 1) {
-    const existing = parts.slice(0, i).join(path.sep) || path.sep;
-    if (!fs.existsSync(existing)) continue;
-    const rest = parts.slice(i);
-    return path.join(fs.realpathSync.native(existing), ...rest);
-  }
+  return path.resolve(absolute);
+}
+
+function log(message) {
   try {
-    return fs.realpathSync.native(absolute);
+    if (process.env.KIRO_VALIDATE_READ_LOG === "0") return;
+    const logDir = path.join(os.homedir(), ".kiro", "logs");
+    fs.mkdirSync(logDir, { recursive: true });
+    const line = `${new Date().toISOString()} ${message}\n`;
+    fs.appendFileSync(path.join(logDir, "validate-read-allowed-paths.log"), line);
   } catch (_err) {
-    return path.resolve(absolute);
+    // logging must never break the hook
   }
 }
 
@@ -77,12 +82,16 @@ const allowedRoots = [
   normalizePath(cwd, "/private/var/folders"),
 ];
 
+log(`cwd=${cwd} roots=${JSON.stringify(allowedRoots)} paths=${JSON.stringify(paths)}`);
+
 for (const requestedPath of paths) {
   const normalized = normalizePath(cwd, requestedPath);
   if (allowedRoots.some((root) => isUnderOrEqual(normalized, root))) {
+    log(`ALLOW '${requestedPath}' -> '${normalized}'`);
     continue;
   }
 
+  log(`BLOCK '${requestedPath}' -> '${normalized}'`);
   block(
     `BLOCKED: code_supervisor cannot read '${requestedPath}'.\n` +
       "Use explorer subagent to read file"

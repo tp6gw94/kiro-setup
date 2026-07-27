@@ -1,0 +1,52 @@
+;; ---------------------------------------------------------------------------
+;; Agent: Kiro CLI
+;; Kiro CLI binary, state, config, and cmux integration paths.
+;; Source: hand-written (upstream agent-safehouse has no 60-agents/kiro-cli.sb)
+;; ---------------------------------------------------------------------------
+
+;; - the real binary lives inside /Applications/Kiro CLI.app; ~/.local/bin/kiro-cli
+;;   is only a symlink, so both the link and the bundle need file-read*
+;;   (process-exec alone is not enough on macOS)
+;; - runtime state (auth sqlite, downloaded bun + tui.js, knowledge bases,
+;;   feed cache) lives under ~/Library/Application Support/kiro-cli
+;; - user config (agents, hooks, skills, settings, sessions, generated JSON)
+;;   lives under ~/.kiro and must stay writable for generate-configs.sh
+
+;; Kiro CLI app bundle: read + exec.
+(allow file-read*
+    (literal "/Applications")
+    (subpath "/Applications/Kiro CLI.app")
+)
+
+;; Entry-point symlinks in ~/.local/bin.
+(allow file-read*
+    (home-prefix "/.local/bin/kiro-cli")
+)
+
+;; Kiro CLI runtime state and user config.
+(allow file-read* file-write*
+    (home-subpath "/Library/Application Support/kiro-cli")  ;; auth data.sqlite3, bun, tui.js, knowledge_bases, feed.json, shell/
+    (home-subpath "/.kiro")                                 ;; agents, hooks, skills, settings, sessions, generated config
+)
+
+;; Metadata traversal for the ~/Library ancestors used above.
+(allow file-read-metadata
+    (home-subpath "/Library")
+)
+
+;; ---------------------------------------------------------------------------
+;; cmux integration (notification hooks, markdown panels, browser skills)
+;; ---------------------------------------------------------------------------
+;; The cmux CLI is a symlink into /Applications/cmux.app and talks to the app
+;; over a unix socket (CMUX_SOCKET_PATH) plus a localhost port (CMUX_PORT).
+;; Network is already fully open in 20-network.sb, so only the bundle and the
+;; socket paths need explicit grants.
+
+(allow file-read*
+    (subpath "/Applications/cmux.app")
+)
+
+(allow file-read* file-write*
+    (home-subpath "/.local/state/cmux")                     ;; CMUX_SOCKET_PATH default location
+    (home-subpath "/Library/Application Support/cmux")      ;; legacy socket + lock files
+)

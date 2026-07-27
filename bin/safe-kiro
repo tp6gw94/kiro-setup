@@ -1,0 +1,278 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Custom sandbox wrapper for Kiro CLI.
+#
+# Mirrors ~/.pi/bin/safe-pi: a static base profile plus addons, with the
+# invocation directory appended as a read/write workdir at launch time.
+#
+# Default invocation (no args) runs the kiro_default agent with all tools
+# trusted. Any arguments are passed through to kiro-cli untouched, e.g.
+#   safe-kiro chat --resume
+#   safe-kiro --version
+
+SAFEHOUSE_DIR="${SAFEHOUSE_DIR:-$HOME/.kiro/safehouse}"
+BASE_PROFILE="${BASE_PROFILE:-$SAFEHOUSE_DIR/custom-kiro.sb}"
+BROWSER_ADDON="${BROWSER_ADDON:-$SAFEHOUSE_DIR/browser-addon.sb}"
+KEYCHAIN_ADDON="${KEYCHAIN_ADDON:-$SAFEHOUSE_DIR/keychain-addon.sb}"
+EMACS_ADDON="${EMACS_ADDON:-$SAFEHOUSE_DIR/emacs-addon.sb}"
+AWS_ADDON="${AWS_ADDON:-$SAFEHOUSE_DIR/aws-addon.sb}"
+
+KIRO_BIN="${KIRO_BIN:-kiro-cli}"
+DEFAULT_AGENT="${SAFE_KIRO_AGENT:-kiro_default}"
+
+if [[ ! -f "$BASE_PROFILE" ]]; then
+  echo "Base profile not found: $BASE_PROFILE" >&2
+  exit 1
+fi
+
+if [[ ! -f "$BROWSER_ADDON" ]]; then
+  echo "Browser addon not found: $BROWSER_ADDON" >&2
+  exit 1
+fi
+
+WORKDIR="$(pwd -P)"
+
+# Escape a string for use inside an SBPL double-quoted string.
+_sb_escape() {
+  local s="$1"
+  s="${s//\\/\\\\}"
+  s="${s//\"/\\\"}"
+  printf '%s' "$s"
+}
+
+# Emit file-read* literal rules for every ancestor of a path (including /).
+# This matches Safehouse's emit_path_ancestor_literals() behavior.
+_emit_path_ancestors() {
+  local path="$1"
+  local trimmed current=""
+
+  printf '    (literal "/")\n'
+
+  trimmed="${path#/}"
+  if [[ -n "$trimmed" ]]; then
+    local IFS='/'
+    local -a parts=()
+    read -r -a parts <<< "$trimmed"
+    for part in "${parts[@]}"; do
+      [[ -z "$part" ]] && continue
+      current="${current}/${part}"
+      printf '    (literal "%s")\n' "$(_sb_escape "$current")"
+    done
+  fi
+}
+
+# Absolute path of the shared git common dir, or empty if not in a repo.
+# Needed so commit/reset/av can write refs/objects when .git lives outside
+# WORKDIR (linked worktree, or safe-kiro launched from a subdirectory).
+_detect_git_common_dir() {
+  local d
+
+  d="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+  if [[ -z "$d" ]]; then
+    d="$(git rev-parse --git-common-dir 2>/dev/null || true)"
+    if [[ -n "$d" && "$d" != /* ]]; then
+      d="$(pwd -P)/$d"
+    fi
+  fi
+
+  if [[ -n "$d" && -d "$d" ]]; then
+    (cd "$d" && pwd -P)
+  fi
+}
+
+# If the current directory is a linked git worktree, print the absolute path
+# of the main (original) worktree. Returns nothing for normal checkouts,
+# bare repos, or when git is unavailable.
+_detect_main_worktree() {
+  local git_dir git_common_dir superproject main_worktree
+
+  git_dir="$(git rev-parse --git-dir 2>/dev/null || true)"
+  git_common_dir="$(git rev-parse --git-common-dir 2>/dev/null || true)"
+  superproject="$(git rev-parse --show-superproject-working-tree 2>/dev/null || true)"
+
+  if [[ -z "$git_dir" || -z "$git_common_dir" || "$git_dir" == "$git_common_dir" || -n "$superproject" ]]; then
+    return 0
+  fi
+
+  main_worktree="$(git worktree list --porcelain 2>/dev/null | awk '/^worktree / {print $2; exit}')"
+
+  if [[ -z "$main_worktree" ]]; then
+    main_worktree="${git_common_dir%/*}"
+  fi
+
+  if [[ -n "$main_worktree" && -d "$main_worktree" ]]; then
+    (cd "$main_worktree" && pwd -P)
+  fi
+}
+
+TMP_POLICY="$(mktemp "${TMPDIR:-/tmp}/safe-kiro-policy.XXXXXX")"
+trap 'rm -f "$TMP_POLICY"' EXIT
+
+# Render the HOME_DIR placeholder at launch time so the committed profile stays
+# machine-independent (mirrors safehouse bin/lib/policy/render.sh).
+HOME_DIR="$(cd "$HOME" && pwd -P)"
+sed "s|__SAFEHOUSE_HOME_DIR__|$(_sb_escape "$HOME_DIR")|g" "$BASE_PROFILE" > "$TMP_POLICY"
+
+if grep -q '__SAFEHOUSE_HOME_DIR__' "$TMP_POLICY"; then
+  echo "Failed to render HOME_DIR placeholder in: $BASE_PROFILE" >&2
+  exit 1
+fi
+
+if ! grep -q "^(define HOME_DIR \"" "$TMP_POLICY"; then
+  echo "Base profile has no HOME_DIR definition: $BASE_PROFILE" >&2
+  exit 1
+fi
+
+_append_addon() {
+  local label="$1" file="$2"
+  [[ -f "$file" ]] || return 0
+  {
+    printf '\n;; %s\n' "---------------------------------------------------------------------------"
+    printf ';; %s addon\n' "$label"
+    printf ';; Source: %s\n' "$file"
+    printf ';; %s\n' "---------------------------------------------------------------------------"
+    cat "$file"
+  } >> "$TMP_POLICY"
+}
+
+_append_addon "Browser" "$BROWSER_ADDON"
+_append_addon "Keychain" "$KEYCHAIN_ADDON"
+_append_addon "Emacs" "$EMACS_ADDON"
+_append_addon "AWS" "$AWS_ADDON"
+
+# Tell Playwright-backed browser automation not to re-init an inner sandbox.
+export PLAYWRIGHT_MCP_SANDBOX=false
+
+{
+  cat <<EOF
+
+;; ---------------------------------------------------------------------------
+;; Launch-time workdir access
+;; Generated for: ${WORKDIR}
+;; ---------------------------------------------------------------------------
+(allow file-read*
+$(_emit_path_ancestors "$WORKDIR")
+)
+(allow file-read* file-write* (subpath "$(_sb_escape "$WORKDIR")"))
+EOF
+} >> "$TMP_POLICY"
+
+# When running inside a linked git worktree, also allow read access to the
+# main worktree so cross-worktree diff/inspect workflows can see the baseline.
+MAIN_WORKTREE="$(_detect_main_worktree)"
+if [[ -n "$MAIN_WORKTREE" ]]; then
+{
+  cat <<EOF
+
+;; ---------------------------------------------------------------------------
+;; Main worktree read access (linked worktree detected)
+;; Main worktree: ${MAIN_WORKTREE}
+;; ---------------------------------------------------------------------------
+(allow file-read*
+$(_emit_path_ancestors "$MAIN_WORKTREE")
+)
+(allow file-read* (subpath "$(_sb_escape "$MAIN_WORKTREE")"))
+EOF
+} >> "$TMP_POLICY"
+fi
+
+# RW on shared git metadata so reset/commit/amend/av restack/pr can update
+# refs, objects, and .git/av even when common-dir is outside WORKDIR.
+GIT_COMMON_DIR="$(_detect_git_common_dir)"
+if [[ -n "$GIT_COMMON_DIR" ]]; then
+{
+  cat <<EOF
+
+;; ---------------------------------------------------------------------------
+;; Git common-dir write access (commit / reset / av)
+;; Common dir: ${GIT_COMMON_DIR}
+;; ---------------------------------------------------------------------------
+(allow file-read*
+$(_emit_path_ancestors "$GIT_COMMON_DIR")
+)
+(allow file-read* file-write* (subpath "$(_sb_escape "$GIT_COMMON_DIR")"))
+EOF
+} >> "$TMP_POLICY"
+fi
+
+# Aviator CLI config (stack metadata lives under .git; this is auth/settings).
+AV_CONFIG_DIR="${AV_HOME:-$HOME/.config/av}"
+{
+  cat <<EOF
+
+;; ---------------------------------------------------------------------------
+;; Aviator CLI (av) config
+;; AV_HOME / config: ${AV_CONFIG_DIR}
+;; ---------------------------------------------------------------------------
+(allow file-read* file-write* (subpath "$(_sb_escape "$AV_CONFIG_DIR")"))
+EOF
+} >> "$TMP_POLICY"
+
+# ---------------------------------------------------------------------------
+# Self-protection: keep the sandbox harness immutable from inside the sandbox.
+#
+# ~/.kiro is intentionally writable so generate-configs.sh and session state
+# work, but a few paths under it are executed automatically by kiro-cli on the
+# HOST when you run plain `kiro-cli` without this wrapper (agentSpawn /
+# preToolUse hooks, stdio MCP servers), or are the wrapper itself. Letting a
+# trust-all agent write them would be a delayed sandbox escape.
+#
+# This block is emitted LAST on purpose: SBPL applies the last matching rule,
+# so it also overrides the launch-time workdir grant when safe-kiro is started
+# from inside ~/.kiro itself.
+#
+# Set SAFE_KIRO_ALLOW_SELF_EDIT=1 to opt out when you deliberately want the
+# agent to edit hooks / MCP servers / the wrapper.
+# ---------------------------------------------------------------------------
+if [[ "${SAFE_KIRO_ALLOW_SELF_EDIT:-0}" != "1" ]]; then
+{
+  cat <<'EOF'
+
+;; ---------------------------------------------------------------------------
+;; Sandbox harness self-protection (read stays allowed, writes denied)
+;; ---------------------------------------------------------------------------
+(deny file-write*
+    (home-subpath "/.kiro/bin")                                 ;; safe-kiro itself and sandbox launchers
+    (home-subpath "/.kiro/safehouse")                           ;; the sandbox policy files
+    (home-subpath "/.kiro/hooks")                               ;; auto-executed by kiro-cli on the host
+    (home-subpath "/.kiro/mcp")                                 ;; stdio MCP servers spawned at launch
+    (home-literal "/.kiro/generate-configs.sh")
+    (home-literal "/.kiro/sync-kit-skills.sh")
+    (home-literal "/.kiro/build-kiro-sandbox-template.sh")
+    (regex #"/\.git/hooks/")                                    ;; git hooks run on the host at next commit
+)
+EOF
+} >> "$TMP_POLICY"
+fi
+
+# Mirror Safehouse runtime_build_sanitized_exec_path: bare names like rg/fd
+# must resolve without requiring /opt/homebrew/bin/... full paths.
+_ensure_path_entry() {
+  local entry="$1"
+  case ":${PATH:-}:" in
+    *:"$entry":*) return 0 ;;
+  esac
+  PATH="${PATH:+$PATH:}$entry"
+}
+_ensure_path_entry /usr/local/bin
+_ensure_path_entry /usr/local/sbin
+_ensure_path_entry /opt/homebrew/bin
+_ensure_path_entry /opt/homebrew/sbin
+_ensure_path_entry "$HOME/.local/bin"
+export PATH
+
+# Policy-only mode: print the assembled policy and exit.
+if [[ "${1:-}" == "--print-policy" ]]; then
+  trap - EXIT
+  OUT="${TMP_POLICY%.*}.sb"
+  mv "$TMP_POLICY" "$OUT"
+  echo "$OUT"
+  exit 0
+fi
+
+if [[ $# -eq 0 ]]; then
+  set -- chat --trust-all-tools --agent "$DEFAULT_AGENT"
+fi
+
+exec sandbox-exec -f "$TMP_POLICY" -- "$KIRO_BIN" "$@"

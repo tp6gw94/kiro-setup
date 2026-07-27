@@ -1,0 +1,23 @@
+;; ---------------------------------------------------------------------------
+;; AWS addon for custom-kiro.sb
+;;
+;; Kiro CLI ships a built-in `use_aws` tool that shells out to the AWS CLI.
+;; Without these grants the tool fails at credential resolution.
+;;
+;; WARNING: this is the one surface that reaches OUTSIDE the sandbox. The
+;; filesystem policy cannot constrain what the agent does to live AWS
+;; resources. Delete this file (or unset AWS_ADDON) if you do not want the
+;; sandboxed agent to hold your AWS identity.
+;; ---------------------------------------------------------------------------
+
+(allow file-read* file-write*
+    (home-subpath "/.aws")                                  ;; config, credentials, sso/cache, cli/cache
+    (home-subpath "/.config/aws")                           ;; XDG variant used by some tooling
+    (home-subpath "/Library/Caches/aws-sam-cli")
+)
+
+;; AWS CLI v2 installs its own bundled Python runtime under these roots.
+(allow file-read*
+    (subpath "/usr/local/aws-cli")
+    (subpath "/opt/homebrew/Cellar/awscli")
+)

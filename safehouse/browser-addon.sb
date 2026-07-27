@@ -1,0 +1,349 @@
+;; ---------------------------------------------------------------------------
+;; Browser addon for custom-pi.sb
+;; Optional integration rules pulled from Agent Safehouse:
+;;   - 55-integrations-optional/agent-browser.sb
+;;   - 55-integrations-optional/chromium-full.sb
+;;   - 55-integrations-optional/chromium-headless.sb
+;;   - 55-integrations-optional/clipboard.sb
+;;   - 55-integrations-optional/macos-gui.sb
+;;
+;; Load this AFTER custom-pi.sb and BEFORE launch-time workdir rules.
+;; ---------------------------------------------------------------------------
+
+;; ---------------------------------------------------------------------------
+;; Integration: Clipboard (required by macOS GUI)
+;; ---------------------------------------------------------------------------
+(allow mach-lookup
+    (global-name "com.apple.pasteboard.1")                               ;; Pasteboard service used by pbcopy/pbpaste.
+    (global-name "com.apple.lsd.mapdb")                                  ;; Launch Services type lookups required by pbcopy.
+    (global-name "com.apple.lsd.modifydb")
+)
+
+;; ---------------------------------------------------------------------------
+;; Integration: macOS GUI
+;; Window server, AppKit, accessibility, input, and framework services
+;; needed by any graphical macOS application running under sandbox.
+;; ---------------------------------------------------------------------------
+(allow file-read*
+    (literal "/private/etc")
+    (literal "/private/var/db/eligibilityd/eligibility.plist")
+    (literal "/private/var/db/nsurlstoraged/dafsaData.bin")
+    (literal "/Library/Application Support/Apple/Spotlight/MailUsesCoreSpotlight")
+    (home-literal "/Library/Preferences/com.apple.universalaccess.plist")
+    (home-literal "/Library/Preferences/com.apple.Accessibility.plist")
+    (home-literal "/Library/Preferences/com.apple.CoreGraphics.plist")
+    (home-literal "/Library/Preferences/com.apple.symbolichotkeys.plist")
+    (home-literal "/Library/Preferences/com.apple.ServicesMenu.Services.plist")
+    (home-literal "/Library/Preferences/com.apple.speech.recognition.AppleSpeechRecognition.prefs.plist")
+    (home-literal "/Library/Preferences/com.apple.SpeakSelection.plist")
+    (home-literal "/Library/Preferences/com.apple.assistant.support.plist")
+    (home-literal "/Library/Preferences/com.apple.assistant.backedup.plist")
+    (home-literal "/Library/Preferences/pbs.plist")
+    (home-literal "/Library/Preferences/com.apple.HIToolbox.plist")
+    (literal "/Library/Preferences/com.apple.HIToolbox.plist")
+    (home-subpath "/Library/Preferences/com.apple.LaunchServices")
+    (home-subpath "/Library/Application Support/CrashReporter")
+    (home-subpath "/Library/Spelling")
+    (home-literal "/Library/Keyboard Layouts")
+    (home-literal "/Library/Input Methods")
+)
+
+(allow file-read* file-write*
+    (home-subpath "/Library/Accessibility")
+)
+
+(allow file-read-metadata
+    (literal "/private/var/db")
+    (literal "/Volumes")
+    (subpath "/Volumes")
+    (home-literal "/Desktop")
+    (home-literal "/Documents")
+    (home-literal "/Downloads")
+    (home-literal "/Applications")
+    (home-literal "/Library")
+    (home-literal "/Library/Application Support")
+    (home-literal "/Library/Caches")
+    (home-literal "/Library/CloudStorage")
+    (home-literal "/Library/Containers")
+    (home-literal "/Library/HTTPStorages")
+    (home-literal "/Library/Logs")
+    (home-literal "/Library/Mobile Documents")
+    (home-subpath "/Library/Mobile Documents")
+    (home-literal "/Library/Spelling")
+    (home-literal "/.Trash")
+)
+
+(allow user-preference-read
+    (preference-domain "com.apple.hitoolbox")
+)
+
+(allow mach-lookup
+    (global-name "com.apple.fonts")
+    (global-name "com.apple.FontObjectsServer")
+    (global-name "com.apple.CARenderServer")
+    (global-name "com.apple.windowserver.active")
+    (global-name "com.apple.windowmanager.server")
+    (global-name "com.apple.window_proxies")
+    (global-name "com.apple.dock.server")
+    (global-name "com.apple.dock.fullscreen")
+    (global-name "com.apple.tccd")
+    (global-name "com.apple.tccd.system")
+    (global-name "com.apple.universalaccessAuthWarn")
+    (global-name "com.apple.lsd.mapdb")
+    (global-name "com.apple.lsd.modifydb")
+    (global-name "com.apple.lsd.advertisingidentifiers")
+    (global-name "com.apple.iconservices")
+    (global-name "com.apple.coreservices.appleevents")
+    (global-name "com.apple.coreservices.sharedfilelistd.xpc")
+    (global-name "com.apple.coreservices.quarantine-resolver")
+    (global-name "com.apple.hiservices-xpcservice")
+    (global-name "com.apple.iohideventsystem")
+    (global-name "com.apple.tsm.uiserver")
+    (global-name "com.apple.touchbarserver.mig")
+    (global-name "com.apple.accessibility.voices")
+    (global-name "com.apple.backboard.hid-services.xpc")
+    (global-name "com.apple.backboard.BKSEndpointProviderService")
+    (global-name "com.apple.TextInputUI.xpc.CursorUIViewService")
+    (global-name "com.apple.inputmethodkit.launchagent")
+    (global-name "com.apple.inputmethodkit.launcher")
+    (global-name "com.apple.inputmethodkit.getxpcendpoint")
+    (global-name "com.apple.ViewBridgeAuxiliary")
+    (global-name "com.apple.appkit.restoration_storage")
+    (global-name "com.apple.appkit.xpc.openAndSavePanelService")
+    (global-name "com.apple.backgroundtaskmanagementagent")
+    (global-name "com.apple.pbs.fetch_services")
+    (global-name "com.apple.powerlog.plxpclogger.xpc")
+    (global-name "com.apple.FileCoordination")
+    (global-name "com.apple.security.syspolicy")
+    (global-name "com.apple.security.syspolicy.exec")
+    (global-name "com.apple.uiintelligencesupport.agent")
+    (global-name "com.apple.controlcenter.statusitems")
+    (global-name "com.apple.sidecar-relay")
+    (global-name "com.apple.storekitagent")
+    (global-name "com.apple.scopedbookmarksagent.xpc")
+    (global-name "com.apple.xpc.smd")
+    (global-name "com.apple.bsd.dirhelper")
+    (global-name "com.apple.system.opendirectoryd.membership")
+    (global-name "com.apple.logd.events")
+    (global-name "com.apple.usymptomsd")
+    (global-name "com.apple.spotlight.IndexAgent")
+    (global-name "com.apple.CoreLocation.agent")
+    (global-name "com.apple.locationd.desktop.registration")
+    (global-name "com.apple.usernotifications.listener")
+    (global-name "com.apple.audio.SystemSoundServer-OSX")
+    (global-name "com.apple.audio.audiohald")
+    (global-name "com.apple.cmio.registerassistantservice.system-extensions")
+    (global-name "mul-xpc (Apple)_OpenStep")
+    (global-name "com.apple.naturallanguaged")
+    (global-name "com.apple.inputanalyticsd")
+    (global-name-prefix "com.apple.distributed_notifications@")
+    (local-name "com.apple.coredrag")
+)
+
+(allow mach-register
+    (local-name "com.apple.axserver")
+    (local-name "com.apple.tsm.portname")
+    (local-name "com.apple.coredrag")
+)
+
+(allow system-fsctl
+    (fsctl-command (_IO "h" 47))
+)
+
+(allow iokit-open
+    (iokit-user-client-class "RootDomainUserClient")
+    (iokit-user-client-class "IOHIDParamUserClient")
+    (iokit-user-client-class "AppleNVMeEANUC")
+)
+
+;; ---------------------------------------------------------------------------
+;; Integration: Chromium Headless
+;; ---------------------------------------------------------------------------
+(allow file-read-metadata
+    (literal "/private/var/db")
+    (literal "/private/var/db/.AppleSetupDone")
+    (home-literal "/Library")
+    (home-literal "/Library/Application Support")
+    (home-literal "/Library/Caches")
+    (home-literal "/Library/Spelling")
+)
+
+(allow file-read*
+    (literal "/private/etc")
+    (home-literal "/Library/Preferences/com.apple.universalaccess.plist")
+    (home-literal "/Library/Preferences/com.apple.Accessibility.plist")
+    (home-literal "/Library/Preferences/com.apple.CoreGraphics.plist")
+    (home-literal "/Library/Preferences/com.apple.symbolichotkeys.plist")
+    (home-literal "/Library/Preferences/com.apple.ServicesMenu.Services.plist")
+    (home-literal "/Library/Preferences/com.apple.speech.recognition.AppleSpeechRecognition.prefs.plist")
+    (home-literal "/Library/Preferences/com.apple.SpeakSelection.plist")
+    (home-literal "/Library/Preferences/com.apple.assistant.support.plist")
+    (home-literal "/Library/Preferences/com.apple.assistant.backedup.plist")
+    (home-literal "/Library/Preferences/pbs.plist")
+    (home-literal "/Library/Preferences/com.apple.HIToolbox.plist")
+    (literal "/Library/Preferences/com.apple.HIToolbox.plist")
+    (home-subpath "/Library/Preferences/com.apple.LaunchServices")
+    (home-subpath "/Library/Application Support/CrashReporter")
+    (home-subpath "/Library/Spelling")
+    (home-literal "/Library/Keyboard Layouts")
+    (home-literal "/Library/Input Methods")
+    (home-subpath "/Library/Application Support/Google/Chrome/Crashpad")
+)
+
+(allow user-preference-read
+    (preference-domain "com.apple.hitoolbox")
+)
+
+(allow mach-register
+    (global-name-regex #"^org\.chromium\.Chromium\.MachPortRendezvousServer\.")
+    (global-name-regex #"^org\.chromium\.crashpad\.child_port_handshake\.")
+    (global-name-regex #"^com\.google\.Chrome\.MachPortRendezvousServer\.")
+    (global-name-regex #"^com\.google\.Chrome\.crashpad\.child_port_handshake\.")
+    (local-name "com.apple.axserver")
+    (local-name "com.apple.tsm.portname")
+    (local-name "com.apple.coredrag")
+)
+
+(allow mach-lookup
+    (global-name-regex #"^org\.chromium\.Chromium\.MachPortRendezvousServer\.")
+    (global-name-regex #"^org\.chromium\.crashpad\.child_port_handshake\.")
+    (global-name-regex #"^com\.google\.Chrome\.MachPortRendezvousServer\.")
+    (global-name-regex #"^com\.google\.Chrome\.crashpad\.child_port_handshake\.")
+    (global-name "com.apple.MTLCompilerService")
+    (global-name "com.apple.SafariPlatformSupport.Helper")
+    (global-name "com.apple.CARenderServer")
+    (global-name "com.apple.windowserver.active")
+    (global-name "com.apple.windowmanager.server")
+    (global-name "com.apple.window_proxies")
+    (global-name "com.apple.dock.server")
+    (global-name "com.apple.tccd")
+    (global-name "com.apple.tccd.system")
+    (global-name "com.apple.fonts")
+    (global-name "com.apple.FontObjectsServer")
+    (global-name "com.apple.lsd.mapdb")
+    (global-name "com.apple.lsd.modifydb")
+    (global-name "com.apple.iconservices")
+    (global-name "com.apple.coreservices.appleevents")
+    (global-name "com.apple.coreservices.sharedfilelistd.xpc")
+    (global-name "com.apple.coreservices.quarantine-resolver")
+    (global-name "com.apple.hiservices-xpcservice")
+    (global-name "com.apple.iohideventsystem")
+    (global-name "com.apple.tsm.uiserver")
+    (global-name "com.apple.touchbarserver.mig")
+    (global-name "com.apple.accessibility.voices")
+    (global-name "com.apple.backboard.hid-services.xpc")
+    (global-name "com.apple.backboard.BKSEndpointProviderService")
+    (global-name "com.apple.TextInputUI.xpc.CursorUIViewService")
+    (global-name "com.apple.inputmethodkit.launchagent")
+    (global-name "com.apple.inputmethodkit.launcher")
+    (global-name "com.apple.inputmethodkit.getxpcendpoint")
+    (global-name "com.apple.ViewBridgeAuxiliary")
+    (global-name "com.apple.appkit.restoration_storage")
+    (global-name "com.apple.appkit.xpc.openAndSavePanelService")
+    (global-name "com.apple.backgroundtaskmanagementagent")
+    (global-name "com.apple.pbs.fetch_services")
+    (global-name "com.apple.powerlog.plxpclogger.xpc")
+    (global-name "com.apple.FileCoordination")
+    (global-name "com.apple.security.syspolicy")
+    (global-name "com.apple.security.syspolicy.exec")
+    (global-name "com.apple.sidecar-relay")
+    (global-name "com.apple.scopedbookmarksagent.xpc")
+    (global-name "com.apple.xpc.smd")
+    (global-name "com.apple.bsd.dirhelper")
+    (global-name "com.apple.system.opendirectoryd.membership")
+    (global-name "com.apple.logd.events")
+    (global-name "com.apple.usernotifications.listener")
+    (global-name "com.apple.audio.SystemSoundServer-OSX")
+    (global-name "com.apple.audio.audiohald")
+    (global-name "mul-xpc (Apple)_OpenStep")
+    (global-name "com.apple.naturallanguaged")
+    (global-name "com.apple.inputanalyticsd")
+    (global-name-prefix "com.apple.distributed_notifications@")
+)
+
+(allow file-read* file-write*
+    (home-subpath "/Library/Application Support/Google/Chrome/Crashpad")
+)
+(allow file-read-xattr file-write-xattr
+    (home-subpath "/Library/Application Support/Google/Chrome/Crashpad")
+)
+
+(allow system-fsctl
+    (fsctl-command (_IO "h" 47))
+)
+
+(allow iokit-open
+    (iokit-user-client-class "RootDomainUserClient")
+    (iokit-user-client-class "IOHIDParamUserClient")
+    (iokit-user-client-class "AppleNVMeEANUC")
+    (iokit-user-client-class "IOSurfaceRootUserClient")
+    (iokit-user-client-class "AGXDeviceUserClient")
+)
+
+;; ---------------------------------------------------------------------------
+;; Integration: Chromium Full
+;; ---------------------------------------------------------------------------
+(allow file-read-metadata
+    (home-literal "/Library/Application Support/Google")
+    (home-literal "/Library/Application Support/Google/Chrome")
+    (home-literal "/Library/Application Support/Google/Chrome/Crashpad")
+    (home-literal "/Library/Application Support/Google/Chrome for Testing")
+    (home-literal "/Library/Application Support/Google/Chrome for Testing/Crashpad")
+    (home-literal "/Library/Google")
+)
+
+(allow file-read*
+    (literal "/Applications")
+    (subpath "/Applications/Google Chrome.app")
+    (subpath "/Applications/cmux.app")
+    (literal "/System")
+    (literal "/System/Volumes")
+    (literal "/System/Volumes/Data")
+    (literal "/System/Volumes/Data/Applications")
+    (subpath "/System/Volumes/Data/Applications/Google Chrome.app")
+    (subpath "/System/Volumes/Data/Applications/cmux.app")
+    (literal "/Library")
+    (home-literal "/Library/Preferences/com.google.Chrome.plist")
+    (home-literal "/Library/Preferences/com.google.chrome.for.testing.plist")
+    (home-literal "/Library/Google/Google Chrome Brand.plist")
+)
+
+(allow file-read* file-write*
+    (home-literal "/Library/Application Support/Google/Chrome/DevToolsActivePort")
+    (home-subpath "/Library/Application Support/Google/Chrome/Crashpad")
+    (home-subpath "/Library/Application Support/Google/Chrome for Testing/Crashpad")
+)
+(allow file-read-xattr file-write-xattr
+    (home-subpath "/Library/Application Support/Google/Chrome for Testing/Crashpad")
+)
+
+(allow mach-register
+    (global-name-regex #"^com\.google\.Chrome\.MachPortRendezvousServer\.")
+    (global-name-regex #"^com\.google\.Chrome\.crashpad\.child_port_handshake\.")
+    (global-name-regex #"^com\.google\.chrome\.for\.testing\.MachPortRendezvousServer\.")
+    (global-name-regex #"^com\.google\.chrome\.for\.testing\.crashpad\.child_port_handshake\.")
+)
+
+(allow mach-lookup
+    (global-name-regex #"^com\.google\.Chrome\.MachPortRendezvousServer\.")
+    (global-name-regex #"^com\.google\.Chrome\.crashpad\.child_port_handshake\.")
+    (global-name-regex #"^com\.google\.chrome\.for\.testing\.MachPortRendezvousServer\.")
+    (global-name-regex #"^com\.google\.chrome\.for\.testing\.crashpad\.child_port_handshake\.")
+    (global-name "com.apple.pasteboard.1")
+    (global-name "com.apple.system.opendirectoryd.api")
+    (global-name "com.apple.ctkd.token-client")
+)
+
+;; ---------------------------------------------------------------------------
+;; Integration: Agent Browser
+;; ---------------------------------------------------------------------------
+(allow file-read* file-write*
+    (home-literal "")                                                 ;; Traverse HOME when workdir is outside $HOME and the CLI probes ~/.agent-browser directly.
+    (home-literal "/.agent-browser")                                  ;; Directory entry access for direct stat/readdir calls on ~/.agent-browser.
+    (home-subpath "/.agent-browser")
+)
+
+(allow file-read-metadata
+    (home-literal "/Library")                                         ;; pnpm-installed shims under ~/Library/pnpm require ancestor traversal during Node entrypoint resolution.
+    (home-literal "/Library/pnpm")
+)

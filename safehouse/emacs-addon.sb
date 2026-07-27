@@ -1,0 +1,41 @@
+;; ---------------------------------------------------------------------------
+;; Emacs / Applications addon for custom-pi.sb
+;;
+;; Homebrew emacs-plus wraps to /Applications/Emacs.app; sandbox needs
+;; file-read* on the binary (process-exec alone is not enough).
+;; ---------------------------------------------------------------------------
+
+;; Whole /Applications — user-requested so any .app under it can exec.
+(allow file-read*
+    (literal "/Applications")
+    (subpath "/Applications")
+)
+
+;; Emacs user state (doom/spacemacs/vanilla + XDG layout)
+(allow file-read* file-write*
+    (home-subpath "/.emacs.d")
+    (home-subpath "/.config/emacs")
+    (home-subpath "/.cache/emacs")
+    (home-subpath "/.local/share/emacs")
+    (home-subpath "/.local/state/emacs")
+    (home-literal "/.emacs")
+    (home-literal "/.emacs.el")
+    (home-literal "/Library/Preferences/org.gnu.Emacs.plist")
+    (home-literal "/Library/Colors/Emacs.clr")
+    (home-subpath "/Library/Caches/org.gnu.Emacs")
+    (home-subpath "/Library/Caches/Emacs")
+)
+
+;; GUI service registration (existing emacs server / ServiceProvider)
+(allow mach-lookup
+    (global-name "org.gnu.Emacs.ServiceProvider")
+    (global-name "com.apple.colorsync.useragent")
+    (global-name "com.apple.ColorSyncXPCAgent")
+    (global-name "com.apple.iconservices.store")
+    (global-name "com.apple.carboncore.csnameddata")
+)
+
+(allow mach-register
+    (global-name "org.gnu.Emacs.ServiceProvider")
+    (global-name-regex #"^org\.gnu\.Emacs")
+)

@@ -1,0 +1,36 @@
+;; ---------------------------------------------------------------------------
+;; Keychain addon (optional integration from agent-safehouse)
+;; Source: https://github.com/eugene1g/agent-safehouse/blob/main/profiles/55-integrations-optional/keychain.sb
+;; Lets sandboxed `gh` (keyring token mode) read macOS Keychain.
+;; ---------------------------------------------------------------------------
+
+(allow file-read* file-write*
+    (home-subpath "/Library/Keychains")                        ;; Keychain DB/files
+    (home-literal "/Library/Preferences/com.apple.security.plist")
+)
+
+(allow file-read*
+    (literal "/Library/Preferences/com.apple.security.plist")
+    (literal "/Library/Keychains/System.keychain")
+    (subpath "/private/var/db/mds")
+)
+
+(allow file-read-metadata
+    (home-literal "/Library")
+    (home-literal "/Library/Keychains")
+    (literal "/Library")
+    (literal "/Library/Keychains")
+)
+
+(allow mach-lookup
+    (global-name "com.apple.SecurityServer")       ;; Keychain daemon
+    (global-name "com.apple.security.agent")        ;; Login prompts/unlock dialogs
+    (global-name "com.apple.securityd.xpc")         ;; securityd backend
+    (global-name "com.apple.security.authhost")     ;; Auth host
+    (global-name "com.apple.secd")                  ;; Secure Enclave mediation
+    (global-name "com.apple.trustd")                ;; trustd backend
+)
+
+(allow ipc-posix-shm-read-data ipc-posix-shm-write-create ipc-posix-shm-write-data
+    (ipc-posix-name "com.apple.AppleDatabaseChanged")
+)

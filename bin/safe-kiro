@@ -14,6 +14,7 @@ set -euo pipefail
 SAFEHOUSE_DIR="${SAFEHOUSE_DIR:-$HOME/.kiro/safehouse}"
 BASE_PROFILE="${BASE_PROFILE:-$SAFEHOUSE_DIR/custom-kiro.sb}"
 BROWSER_ADDON="${BROWSER_ADDON:-$SAFEHOUSE_DIR/browser-addon.sb}"
+EGO_ADDON="${EGO_ADDON:-$SAFEHOUSE_DIR/ego-addon.sb}"
 KEYCHAIN_ADDON="${KEYCHAIN_ADDON:-$SAFEHOUSE_DIR/keychain-addon.sb}"
 EMACS_ADDON="${EMACS_ADDON:-$SAFEHOUSE_DIR/emacs-addon.sb}"
 AWS_ADDON="${AWS_ADDON:-$SAFEHOUSE_DIR/aws-addon.sb}"
@@ -137,6 +138,7 @@ _append_addon() {
 }
 
 _append_addon "Browser" "$BROWSER_ADDON"
+_append_addon "ego lite" "$EGO_ADDON"
 _append_addon "Keychain" "$KEYCHAIN_ADDON"
 _append_addon "Emacs" "$EMACS_ADDON"
 _append_addon "AWS" "$AWS_ADDON"

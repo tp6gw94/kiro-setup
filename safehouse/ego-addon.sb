@@ -1,0 +1,62 @@
+;; ---------------------------------------------------------------------------
+;; ego lite addon for custom-kiro.sb
+;;
+;; `ego-browser` (from ego lite, bundle id com.citrolabs.ego.lite) is a thin
+;; Mojo client. It does NOT launch its own browser: it connects to the already
+;; running ego lite app through the mach bootstrap service
+;;   com.citrolabs.ego.ego-browser
+;; Without that mach-lookup the CLI fails with its own sandbox hint:
+;;   Failed to connect to ego_cli bootstrap
+;;   Agent note: ego-browser cannot connect to the ego_cli bootstrap from the
+;;   default agent sandbox. A running ego.app is not enough; retry with Full
+;;   Access or run ego-browser outside the agent sandbox.
+;;
+;; Layout on this machine:
+;;   /Applications/ego lite.app                       real helper binary
+;;     .../Frameworks/ego Framework.framework/Versions/<v>/Helpers/ego-browser
+;;   ~/.local/bin/ego-browser                         PATH entrypoint (symlink)
+;;   ~/.local/share/ego/ego-skills                    the ego-browser skill
+;;   ~/.kiro/skills/ego-browser -> ~/.agents/skills/ego-browser
+;;                              -> ~/.local/share/ego/ego-skills
+;;
+;; Load this AFTER custom-kiro.sb and BEFORE the launch-time workdir rules.
+;; ---------------------------------------------------------------------------
+
+;; App bundle: read + exec. process-exec alone is not enough on macOS, the
+;; Mach-O image itself needs file-read*.
+(allow file-read*
+    (literal "/Applications")
+    (subpath "/Applications/ego lite.app")
+    (home-literal "/Applications")
+    (home-subpath "/Applications/ego lite.app")          ;; ~/Applications fallback install location
+)
+
+;; PATH entrypoint symlink registered by ego lite onboarding.
+(allow file-read*
+    (home-prefix "/.local/bin/ego-browser")
+)
+
+;; ego lite user state: the ego-browser skill tree that ~/.kiro/skills resolves
+;; to, plus the "learnings" ego writes back after successful runs.
+(allow file-read* file-write*
+    (home-literal "/.local/share/ego")
+    (home-subpath "/.local/share/ego")
+)
+
+;; The Mojo bootstrap endpoint published by the running app. Note: the app only
+;; registers this endpoint after the first successful CLI connection, so a fresh
+;; install can fail with "Failed to connect to ego_cli bootstrap" even though
+;; this rule is in place — that is a missing service, not a denied lookup.
+;; (`com.citrolabs.ego.ego-browser` is the helper's codesign identifier, not a
+;; mach service name.)
+(allow mach-lookup
+    (global-name "com.citrolabs.ego.lite.ego-browser")
+)
+
+;; Chromium-style Mojo channels the CLI may register while bootstrapping.
+(allow mach-register
+    (global-name-regex #"^com\.citrolabs\.ego\.")
+)
+(allow mach-lookup
+    (global-name-regex #"^com\.citrolabs\.ego\.")
+)

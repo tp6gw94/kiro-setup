@@ -20,7 +20,7 @@ EMACS_ADDON="${EMACS_ADDON:-$SAFEHOUSE_DIR/emacs-addon.sb}"
 AWS_ADDON="${AWS_ADDON:-$SAFEHOUSE_DIR/aws-addon.sb}"
 
 KIRO_BIN="${KIRO_BIN:-kiro-cli}"
-DEFAULT_AGENT="${SAFE_KIRO_AGENT:-kiro_default}"
+DEFAULT_AGENT="${SAFE_KIRO_AGENT:-main}"
 
 if [[ ! -f "$BASE_PROFILE" ]]; then
   echo "Base profile not found: $BASE_PROFILE" >&2
@@ -277,4 +277,4 @@ if [[ $# -eq 0 ]]; then
   set -- chat --trust-all-tools --agent "$DEFAULT_AGENT"
 fi
 
-exec sandbox-exec -f "$TMP_POLICY" -- "$KIRO_BIN" "$@"
+exec sandbox-exec -f "$TMP_POLICY" -- "$KIRO_BIN" --v3 "$@"

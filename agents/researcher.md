@@ -1,5 +1,6 @@
 ---
 name: researcher
+model: claude-sonnet-5
 description: Autonomous web researcher. Searches, evaluates sources, and synthesizes a focused, well-cited research brief. Use for questions that depend on external docs, APIs, benchmarks, or recent developments.
 tools: ["read", "write", "web", "@mcp"]
 includeMcpJson: false

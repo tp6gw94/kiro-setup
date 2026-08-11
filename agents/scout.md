@@ -1,5 +1,6 @@
 ---
 name: scout
+model: gpt-5.6-luna
 description: Fast codebase recon that returns compressed context for handoff. Maps entry points, key types, data flow, and the files likely to need changes, then writes a distilled context brief.
 tools: ["read", "write", "shell"]
 includeMcpJson: false

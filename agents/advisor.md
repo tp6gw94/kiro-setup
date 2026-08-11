@@ -1,5 +1,6 @@
 ---
 name: advisor
+model: gpt-5.6-sol
 description: Compatibility alias for oracle. High-context decision-consistency advisor that protects inherited decisions and prevents drift. Read-only. Identical behavior to oracle.
 tools: ["read", "shell"]
 includeMcpJson: false

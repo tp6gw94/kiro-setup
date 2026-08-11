@@ -1,5 +1,6 @@
 ---
 name: reviewer
+model: gpt-5.6-sol
 description: Versatile review specialist for code diffs, plans, proposed solutions, codebase health, and PR/issue validation. Reports findings with evidence and applies small corrective fixes when asked.
 tools: ["read", "write", "shell"]
 includeMcpJson: false

@@ -1,5 +1,6 @@
 ---
 name: context-builder
+model: claude-sonnet-5
 description: Analyzes a request against the codebase and produces a complete context handoff plus a meta-prompt contract for the next agent. Can research externally when local evidence is insufficient.
 tools: ["read", "write", "shell", "web"]
 includeMcpJson: false

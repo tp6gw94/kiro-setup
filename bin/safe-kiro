@@ -20,7 +20,7 @@ EMACS_ADDON="${EMACS_ADDON:-$SAFEHOUSE_DIR/emacs-addon.sb}"
 AWS_ADDON="${AWS_ADDON:-$SAFEHOUSE_DIR/aws-addon.sb}"
 
 KIRO_BIN="${KIRO_BIN:-kiro-cli}"
-DEFAULT_AGENT="${SAFE_KIRO_AGENT:-main}"
+DEFAULT_AGENT="${SAFE_KIRO_AGENT:-my-default}"
 
 if [[ ! -f "$BASE_PROFILE" ]]; then
   echo "Base profile not found: $BASE_PROFILE" >&2

@@ -3,21 +3,24 @@
 ;;
 ;; `ego-browser` (from ego lite, bundle id com.citrolabs.ego.lite) is a thin
 ;; Mojo client. It does NOT launch its own browser: it connects to the already
-;; running ego lite app through the mach bootstrap service
-;;   com.citrolabs.ego.ego-browser
-;; Without that mach-lookup the CLI fails with its own sandbox hint:
+;; running ego lite app through the mach bootstrap service published by the app.
+;; Without the required access the CLI fails with its own sandbox hint:
 ;;   Failed to connect to ego_cli bootstrap
 ;;   Agent note: ego-browser cannot connect to the ego_cli bootstrap from the
 ;;   default agent sandbox. A running ego.app is not enough; retry with Full
 ;;   Access or run ego-browser outside the agent sandbox.
+;; That hint is printed for any bootstrap failure, so it does not tell you
+;; which rule is missing. Trace the denials instead (see the end of this file).
 ;;
 ;; Layout on this machine:
 ;;   /Applications/ego lite.app                       real helper binary
 ;;     .../Frameworks/ego Framework.framework/Versions/<v>/Helpers/ego-browser
 ;;   ~/.local/bin/ego-browser                         PATH entrypoint (symlink)
+;;     -> ~/.local/share/ego/active_version_dir/Helpers/ego-browser
+;;     -> /Applications/ego lite.app/.../Versions/<v>/Helpers/ego-browser
 ;;   ~/.local/share/ego/ego-skills                    the ego-browser skill
-;;   ~/.kiro/skills/ego-browser -> ~/.agents/skills/ego-browser
-;;                              -> ~/.local/share/ego/ego-skills
+;;   ~/Library/Application Support/Citro Labs/ego lite   user data dir
+;;     (Chromium CrProductDirName from the app's Info.plist)
 ;;
 ;; Load this AFTER custom-kiro.sb and BEFORE the launch-time workdir rules.
 ;; ---------------------------------------------------------------------------
@@ -43,20 +46,80 @@
     (home-subpath "/.local/share/ego")
 )
 
-;; The Mojo bootstrap endpoint published by the running app. Note: the app only
-;; registers this endpoint after the first successful CLI connection, so a fresh
-;; install can fail with "Failed to connect to ego_cli bootstrap" even though
-;; this rule is in place — that is a missing service, not a denied lookup.
-;; (`com.citrolabs.ego.ego-browser` is the helper's codesign identifier, not a
-;; mach service name.)
-(allow mach-lookup
-    (global-name "com.citrolabs.ego.lite.ego-browser")
+;; ---------------------------------------------------------------------------
+;; ego lite user data dir  <-- the rules this addon was missing
+;;
+;; The base profile denies ~/Library/Application Support outright (verify with
+;; `ls ~/Library/Application\ Support` inside the sandbox: Operation not
+;; permitted). Every Chromium-family process needs its product dir there, so
+;; the CLI cannot complete its bootstrap handshake without it. browser-addon.sb
+;; already carries the same carve-out for Chrome (DevToolsActivePort, Crashpad,
+;; Preferences plist); this is the ego equivalent, keyed off
+;; CrProductDirName = "Citro Labs/ego lite".
+;; ---------------------------------------------------------------------------
+
+;; Ancestor traversal for the paths below.
+(allow file-read-metadata
+    (home-literal "/Library")
+    (home-literal "/Library/Application Support")
+    (home-literal "/Library/Caches")
+    (home-literal "/Library/Preferences")
+    (home-literal "/Library/HTTPStorages")
 )
 
-;; Chromium-style Mojo channels the CLI may register while bootstrapping.
+(allow file-read* file-write*
+    (home-literal "/Library/Application Support/Citro Labs")
+    (home-subpath "/Library/Application Support/Citro Labs")
+    (home-literal "/Library/Caches/Citro Labs")
+    (home-subpath "/Library/Caches/Citro Labs")
+)
+
+;; Crashpad and Chromium metadata files carry xattrs.
+(allow file-read-xattr file-write-xattr
+    (home-subpath "/Library/Application Support/Citro Labs")
+    (home-subpath "/Library/Caches/Citro Labs")
+)
+
+;; Preferences and NSURLSession storage for the app's bundle id.
+(allow file-read*
+    (home-literal "/Library/Preferences/com.citrolabs.ego.lite.plist")
+)
+(allow file-read* file-write*
+    (home-prefix "/Library/HTTPStorages/com.citrolabs.ego.lite")
+)
+(allow user-preference-read
+    (preference-domain "com.citrolabs.ego.lite")
+)
+
+;; ---------------------------------------------------------------------------
+;; Mach endpoints
+;;
+;; The helper looks the endpoint up with bootstrap_look_up; the name is built
+;; from the app bundle id plus an ".ego-browser" suffix, and `--ego-server-name`
+;; appends the caller-supplied name. Chromium's own channels
+;; (`<bundle-id>.MachPortRendezvousServer.<pid>`, crashpad child_port_handshake)
+;; use the same prefix.
+;; ---------------------------------------------------------------------------
+(allow mach-lookup
+    (global-name "com.citrolabs.ego.lite.ego-browser")
+    (global-name-regex #"^com\.citrolabs\.ego\.")
+    (global-name-regex #"citrolabs\.ego")               ;; unanchored: survives a JGQLC6YQYJ. team-id prefix
+)
 (allow mach-register
     (global-name-regex #"^com\.citrolabs\.ego\.")
+    (global-name-regex #"citrolabs\.ego")
 )
-(allow mach-lookup
-    (global-name-regex #"^com\.citrolabs\.ego\.")
-)
+
+;; ---------------------------------------------------------------------------
+;; Verifying a change to this file (run on the HOST, not inside safe-kiro):
+;;
+;;   cd ~/.kiro
+;;   POLICY="$(bin/safe-kiro --print-policy)"
+;;   log stream --style compact --predicate 'eventMessage CONTAINS "deny("' &
+;;   sandbox-exec -f "$POLICY" ego-browser nodejs -e "console.log('ready')"
+;;
+;; Each denial line names the operation and the path or global-name that was
+;; refused; add the matching rule here rather than widening the base profile.
+;; Inside the sandbox this cannot be diagnosed: `ps`, `log show`, and writes to
+;; ~/.kiro/safehouse are all denied on purpose.
+;; ---------------------------------------------------------------------------

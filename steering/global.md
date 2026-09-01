@@ -1,0 +1,2 @@
+- Do not add comments that restate what the code already says.
+- Use Traditional Chinese for all documents delivered to users and in all user communications

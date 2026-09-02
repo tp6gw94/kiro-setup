@@ -10,6 +10,28 @@ set -euo pipefail
 # trusted. Any arguments are passed through to kiro-cli untouched, e.g.
 #   safe-kiro chat --resume
 #   safe-kiro --version
+#
+# Wrapper-owned options (consumed here, never forwarded to kiro-cli):
+#   --append-path PATH   Grant the sandboxed agent read/write access to an
+#   --append-path=PATH   extra path for this run only. Repeatable; each
+#                        occurrence appends one path, in the order given. PATH
+#                        may be a directory (recursive subpath grant) or a
+#                        single existing file (narrow literal grant; editors
+#                        that write via temp-file + rename need the containing
+#                        directory instead). Relative paths resolve against the
+#                        invocation directory, and the path must already exist
+#                        (a missing path, an empty value, or "/" is an error).
+#   --print-policy       Print the assembled policy path and exit.
+#
+# Everything after a bare `--` is passed through to kiro-cli verbatim, so
+# `safe-kiro chat -- --append-path x` forwards `--append-path x` to kiro-cli.
+#
+# --append-path is emitted before the harness self-protection deny block, so it
+# can NOT grant writes to ~/.kiro/bin, ~/.kiro/safehouse, ~/.kiro/hooks,
+# ~/.kiro/mcp, the listed ~/.kiro/*.sh scripts, or any .git/hooks directory.
+# SAFE_KIRO_ALLOW_SELF_EDIT=1 is the only opt-out for that, deliberately.
+#
+#   safe-kiro --append-path ~/work/other-repo chat --resume
 
 SAFEHOUSE_DIR="${SAFEHOUSE_DIR:-$HOME/.kiro/safehouse}"
 BASE_PROFILE="${BASE_PROFILE:-$SAFEHOUSE_DIR/custom-kiro.sb}"
@@ -107,6 +129,83 @@ _detect_main_worktree() {
   fi
 }
 
+# Wrapper-owned flags. --append-path is consumed here and never forwarded to
+# kiro-cli; every other argument is passed through untouched. Placed after
+# WORKDIR is resolved because relative append-paths resolve against it.
+APPEND_PATHS=()
+KIRO_ARGS=()
+while (($# > 0)); do
+  case "$1" in
+    --append-path)
+      if (($# < 2)); then
+        echo "--append-path requires a path" >&2
+        exit 1
+      fi
+      APPEND_PATHS+=("$2")
+      shift 2
+      ;;
+    --append-path=*)
+      APPEND_PATHS+=("${1#--append-path=}")
+      shift
+      ;;
+    --)
+      KIRO_ARGS+=("$@")
+      break
+      ;;
+    *)
+      KIRO_ARGS+=("$1")
+      shift
+      ;;
+  esac
+done
+
+if ((${#KIRO_ARGS[@]} > 0)); then
+  set -- "${KIRO_ARGS[@]}"
+else
+  set --
+fi
+
+# Validate and canonicalize each appended path. cd + pwd -P is required because
+# /tmp is a symlink to /private/tmp on macOS and SBPL matches physical paths.
+# The d: / f: prefix carries the kind through to the emission loop below.
+if ((${#APPEND_PATHS[@]} > 0)); then
+  for i in "${!APPEND_PATHS[@]}"; do
+    _raw="${APPEND_PATHS[$i]}"
+    _p="$_raw"
+
+    if [[ -z "$_p" ]]; then
+      echo "--append-path cannot be empty" >&2
+      exit 1
+    fi
+
+    # Resolve relative values against the invocation directory.
+    if [[ "$_p" != /* ]]; then
+      _p="$WORKDIR/$_p"
+    fi
+
+    # Trim trailing slashes (but keep a bare "/" intact for the check below).
+    while [[ "$_p" == */ && "$_p" != "/" ]]; do
+      _p="${_p%/}"
+    done
+
+    if [[ -d "$_p" ]]; then
+      _p="$(cd "$_p" && pwd -P)"
+      if [[ "$_p" == "/" ]]; then
+        echo "--append-path refuses to grant read/write on /: $_raw" >&2
+        exit 1
+      fi
+      APPEND_PATHS[i]="d:$_p"
+    elif [[ -f "$_p" ]]; then
+      _dir="$(cd "$(dirname "$_p")" && pwd -P)"
+      APPEND_PATHS[i]="f:${_dir%/}/$(basename "$_p")"
+    else
+      echo "--append-path must name an existing file or directory: $_raw" >&2
+      exit 1
+    fi
+  done
+  unset _raw _p _dir
+fi
+
 TMP_POLICY="$(mktemp "${TMPDIR:-/tmp}/safe-kiro-policy.XXXXXX")"
 trap 'rm -f "$TMP_POLICY"' EXIT
 
@@ -159,6 +258,46 @@ $(_emit_path_ancestors "$WORKDIR")
 (allow file-read* file-write* (subpath "$(_sb_escape "$WORKDIR")"))
 EOF
 } >> "$TMP_POLICY"
+
+# Extra launch-time paths from --append-path. Emitted after the workdir grant
+# and before the self-protection deny block, so these grants can never re-open
+# writes to the sandbox harness itself.
+if ((${#APPEND_PATHS[@]} > 0)); then
+  for _entry in "${APPEND_PATHS[@]}"; do
+    _kind="${_entry%%:*}"
+    _path="${_entry#*:}"
+    if [[ "$_kind" == "d" ]]; then
+{
+  cat <<EOF
+
+;; ---------------------------------------------------------------------------
+;; Launch-time appended path (--append-path, read/write)
+;; Appended path: ${_path}
+;; ---------------------------------------------------------------------------
+(allow file-read*
+$(_emit_path_ancestors "$_path")
+)
+(allow file-read* file-write* (subpath "$(_sb_escape "$_path")"))
+EOF
+} >> "$TMP_POLICY"
+    else
+{
+  cat <<EOF
+
+;; ---------------------------------------------------------------------------
+;; Launch-time appended path (--append-path, single file, read/write)
+;; Appended file: ${_path}
+;; ---------------------------------------------------------------------------
+(allow file-read*
+$(_emit_path_ancestors "$_path")
+)
+(allow file-read* file-write* (literal "$(_sb_escape "$_path")"))
+EOF
+} >> "$TMP_POLICY"
+    fi
+  done
+  unset _entry _kind _path
+fi
 
 # When running inside a linked git worktree, also allow read access to the
 # main worktree so cross-worktree diff/inspect workflows can see the baseline.

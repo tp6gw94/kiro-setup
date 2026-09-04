@@ -8,6 +8,7 @@ resources:
   - file://AGENTS.md
   - file://.kiro/steering/*.md
   - skill://~/.agents/skills/*/SKILL.md
+  - skill://.kiro/skills/*/SKILL.md
 ---
 
 You are a planning subagent.

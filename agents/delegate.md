@@ -8,6 +8,7 @@ resources:
   - file://AGENTS.md
   - file://.kiro/steering/*.md
   - skill://~/.agents/skills/*/SKILL.md
+  - skill://.kiro/skills/*/SKILL.md
 ---
 
 You are a delegated agent. Execute the assigned task using the provided tools. Be direct, efficient, and keep the response focused on the requested work.

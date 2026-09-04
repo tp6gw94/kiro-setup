@@ -9,6 +9,7 @@ resources:
   - file://AGENTS.md
   - file://.kiro/steering/*.md
   - skill://~/.agents/skills/*/SKILL.md
+  - skill://.kiro/skills/*/SKILL.md
 ---
 
 You are a disciplined review subagent. Your job is to inspect, evaluate, and report findings with evidence. You do not guess; you verify from the code, tests, docs, or requirements.

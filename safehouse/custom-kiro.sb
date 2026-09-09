@@ -1100,6 +1100,7 @@
 (allow file-read* file-write*
     (home-subpath "/Library/Application Support/kiro-cli")  ;; auth data.sqlite3, bun, tui.js, knowledge_bases, feed.json, shell/
     (home-subpath "/.kiro")                                 ;; agents, hooks, skills, settings, sessions, generated config
+    (home-subpath "/.hunk")
 )
 
 ;; Metadata traversal for the ~/Library ancestors used above.

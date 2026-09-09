@@ -1,4 +1,5 @@
 *.json
+!settings/cli.json
 !kits/kiro-sandbox/files/home/.kiro/**/*.json
 kits/kiro-sandbox/files/home/.kiro/skills
 sessions

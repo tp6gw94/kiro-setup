@@ -4,6 +4,7 @@ description: Lightweight general-purpose subagent for a well-scoped task. Assume
 tools: ["read", "write", "shell"]
 includeMcpJson: false
 includePowers: false
+model: gpt-5.6-sol
 resources:
   - file://AGENTS.md
   - file://.kiro/steering/*.md

@@ -1,6 +1,6 @@
 ---
 name: worker
-model: gpt-5.6-luna
+model: claude-sonnet-5
 description: Implementation subagent (developer / coder / implementer). Executes an assigned task or an approved plan handoff with narrow, coherent code edits. Use for normal implementation work and for approved oracle/plan handoffs.
 tools: ["read", "write", "shell"]
 includeMcpJson: false

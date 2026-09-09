@@ -4,6 +4,7 @@ description: High-context decision-consistency oracle that protects inherited de
 tools: ["read", "shell"]
 includeMcpJson: false
 includePowers: false
+model: gpt-5.6-sol
 resources:
   - file://AGENTS.md
   - file://.kiro/steering/*.md

@@ -1,0 +1,35 @@
+{
+  "mcp.loadedBefore": true,
+  "chat.defaultAgent": "my-default",
+  "chat.defaultModel": "gpt-5.6-sol",
+  "chat.enableThinking": true,
+  "chat.enableTangentMode": true,
+  "chat.enableTodoList": true,
+  "chat.greeting.enabled": false,
+  "toolSearch.enabled": false,
+  "chat.showThinking": true,
+  "chat.disableTrustAllConfirmation": true,
+  "chat.enableAutoAgentUpgrade": false,
+  "chat.modelDefaults": {
+    "gtp-5.6-sol": {
+      "reasoning": {
+        "effort": "high"
+      }
+    },
+    "gtp-5.6-luna": {
+      "reasoning": {
+        "effort": "low"
+      }
+    },
+    "claude-sonnet-5": {
+      "output_config": {
+        "effort": "max"
+      }
+    },
+    "claude-opus-5": {
+      "output_config": {
+        "effort": "xhigh"
+      }
+    }
+  }
+}

@@ -6,9 +6,10 @@ set -euo pipefail
 # Mirrors ~/.pi/bin/safe-pi: a static base profile plus addons, with the
 # invocation directory appended as a read/write workdir at launch time.
 #
-# Default invocation (no args) runs the kiro_default agent with all tools
-# trusted. Any arguments are passed through to kiro-cli untouched, e.g.
+# Default and explicit chat invocations run the configured agent with all
+# tools trusted. Explicit chat options are preserved, e.g.
 #   safe-kiro chat --resume
+# Non-chat commands are passed through to kiro-cli untouched, e.g.
 #   safe-kiro --version
 #
 # Wrapper-owned options (consumed here, never forwarded to kiro-cli):
@@ -413,7 +414,45 @@ if [[ "${1:-}" == "--print-policy" ]]; then
 fi
 
 if [[ $# -eq 0 ]]; then
-  set -- chat --trust-all-tools --agent "$DEFAULT_AGENT"
+  set -- chat
+fi
+
+if [[ "${1:-}" == "chat" ]]; then
+  _has_trust=0
+  _has_agent=0
+  _before_delimiter=1
+
+  if (($# > 1)); then
+    for _arg in "${@:2}"; do
+      if ((_before_delimiter)); then
+        case "$_arg" in
+          --)
+            _before_delimiter=0
+            ;;
+          --trust-all-tools)
+            _has_trust=1
+            ;;
+          --agent|--agent=*)
+            _has_agent=1
+            ;;
+        esac
+      fi
+    done
+  fi
+
+  FINAL_CHAT_ARGS=(chat)
+  if ((!_has_trust)); then
+    FINAL_CHAT_ARGS+=(--trust-all-tools)
+  fi
+  if ((!_has_agent)); then
+    FINAL_CHAT_ARGS+=(--agent "$DEFAULT_AGENT")
+  fi
+  if (($# > 1)); then
+    FINAL_CHAT_ARGS+=("${@:2}")
+  fi
+
+  set -- "${FINAL_CHAT_ARGS[@]}"
+  unset FINAL_CHAT_ARGS _arg _has_trust _has_agent _before_delimiter
 fi
 
 exec sandbox-exec -f "$TMP_POLICY" -- "$KIRO_BIN" --v3 "$@"

@@ -11,12 +11,12 @@
   "chat.disableTrustAllConfirmation": true,
   "chat.enableAutoAgentUpgrade": false,
   "chat.modelDefaults": {
-    "gtp-5.6-sol": {
+    "gpt-5.6-sol": {
       "reasoning": {
         "effort": "high"
       }
     },
-    "gtp-5.6-luna": {
+    "gpt-5.6-luna": {
       "reasoning": {
         "effort": "low"
       }

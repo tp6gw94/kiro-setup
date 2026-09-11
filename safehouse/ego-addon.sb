@@ -99,15 +99,25 @@
 ;; appends the caller-supplied name. Chromium's own channels
 ;; (`<bundle-id>.MachPortRendezvousServer.<pid>`, crashpad child_port_handshake)
 ;; use the same prefix.
+;;
+;; The helper binary also carries the unbranded Chromium base bundle id
+;; (`org.chromium.Chromium`) alongside the ".ego-browser" suffix, used by
+;; dev/unbranded builds or when the Info.plist lookup fails.
+;; ~/.pi/safehouse/browser-addon.sb allows that name too; keeping the two
+;; profiles at parity means a build that falls back does not surface as an
+;; unexplained "Failed to connect to ego_cli bootstrap".
 ;; ---------------------------------------------------------------------------
 (allow mach-lookup
     (global-name "com.citrolabs.ego.lite.ego-browser")
+    (global-name "org.chromium.Chromium.ego-browser")   ;; unbranded Chromium fallback prefix
     (global-name-regex #"^com\.citrolabs\.ego\.")
     (global-name-regex #"citrolabs\.ego")               ;; unanchored: survives a JGQLC6YQYJ. team-id prefix
+    (global-name-regex #"^org\.chromium\.Chromium\.")   ;; MachPortRendezvousServer / crashpad under the fallback prefix
 )
 (allow mach-register
     (global-name-regex #"^com\.citrolabs\.ego\.")
     (global-name-regex #"citrolabs\.ego")
+    (global-name-regex #"^org\.chromium\.Chromium\.")
 )
 
 ;; ---------------------------------------------------------------------------

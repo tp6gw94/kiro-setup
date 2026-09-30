@@ -4,7 +4,7 @@ description: Turns requirements and context into specs, implementation plans, an
 tools: ["read", "write"]
 includeMcpJson: false
 includePowers: false
-model: gpt-5.6-sol
+model: claude-opus-5.5
 resources:
   - file://AGENTS.md
   - file://.kiro/steering/*.md

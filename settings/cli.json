@@ -1,7 +1,7 @@
 {
   "mcp.loadedBefore": true,
   "chat.defaultAgent": "my-default",
-  "chat.defaultModel": "gpt-5.6-sol",
+  "chat.defaultModel": "claude-opus-5.5",
   "chat.enableThinking": true,
   "chat.enableTangentMode": true,
   "chat.enableTodoList": true,

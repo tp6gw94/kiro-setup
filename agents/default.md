@@ -1,7 +1,7 @@
 ---
 name: my-default
 tools: ["@builtin", "@mcp"]
-model: claude-opus-5
+model: claude-opus-5.5
 includeMcpJson: false
 includePowers: false
 mcpServers:

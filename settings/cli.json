@@ -30,6 +30,11 @@
       "output_config": {
         "effort": "xhigh"
       }
+    },
+    "claude-opus-5.5": {
+      "output_config": {
+        "effort": "xhigh"
+      }
     }
   }
 }
